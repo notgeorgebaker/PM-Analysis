@@ -22,6 +22,14 @@ kind of work you'd otherwise do in VMD.
   POPE/POPG/cardiolipin lipids — works fully offline and exercises every
   molecule-type category and analysis. A companion `demo_ensemble.pdb`
   (8 perturbed models) demonstrates H-bond survival times and RMSF.
+- **Trajectories** — load a multi-model PDB or attach a **DCD/XTC/TRR**
+  trajectory to a topology. A transport bar (bottom-left) gives play/pause, a
+  frame dropdown and a scrubber; a frame + **ns** readout sits bottom-right. The
+  current frame drives both the **view and the analyses** — every per-residue
+  analysis is computed on the frame you're looking at.
+- **Image export** — an **Export** menu (top-right) renders the current view to
+  **PNG, JPEG, TIFF or SVG** at 1–4× resolution and saves it through a native
+  host file dialog (with a browser-download fallback).
 - **Clean representations** — cartoon, surface, ball-and-stick, licorice,
   spacefill, ribbon, rope and more, each its own non-destructive layer with its
   own selection, colour scheme and opacity. Stack and tweak them live.
@@ -128,13 +136,13 @@ your existing notebook selections almost verbatim.
 
 ## Roadmap (next passes)
 
-- **Trajectories**: PSF+DCD/XTC loading and a timeline scrubber. The static
-  analyses above are written to run per-frame, so they become time-series for
-  free (matching `TM1_…_Inter_Residue_Distances.csv`); the trajectory pass is
-  then mostly a frame slider + plotting.
+- **Time-series analysis**: now that frames drive each analysis, plot any
+  per-frame metric across the whole trajectory (matching
+  `TM1_…_Inter_Residue_Distances.csv`) and export to CSV.
 - In-viewport **measurement tools** (click-to-measure distances/angles) and
   colour-by-analysis (paint SASA, RMSF or secondary structure onto the structure).
-- Richer plots (currently inline SVG/tables) and CSV export.
+- DCD/XTC **viewport playback** is best-effort via NGL's client-side trajectory
+  support; multi-model PDB plays natively and analysis works for both.
 - Packaged installers via `electron-builder` with a bundled Python runtime.
 
 ## Repository layout
@@ -152,6 +160,8 @@ backend/
   samples/             bundled offline demo structure + multi-model ensemble
   test_api.py          in-process endpoint tests
 app/
-  electron/            Electron main + preload
+  electron/            Electron main + preload (spawns backend; native save dialog)
   src/                 React UI (viewport, representation stack, inspector, analysis)
+    exporter.ts        PNG/JPEG/TIFF/SVG encoding + host save
+    components/        ImportPanel, SelectionTree, AnalysisPanel, ExportMenu, Viewport…
 ```

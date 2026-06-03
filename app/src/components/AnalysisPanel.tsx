@@ -24,9 +24,11 @@ interface Props {
   structure: StructureRef | null;
   structures: StructureRef[];
   picked: PickedSelection | null;
+  frame: number | null; // current trajectory frame (null = single structure)
+  nFrames: number;
 }
 
-export function AnalysisPanel({ structure, structures, picked }: Props) {
+export function AnalysisPanel({ structure, structures, picked, frame, nFrames }: Props) {
   const [tab, setTab] = useState<Tab>("dssp");
   return (
     <div className="section">
@@ -40,15 +42,18 @@ export function AnalysisPanel({ structure, structures, picked }: Props) {
             ))}
           </select>
         </label>
+        {nFrames > 1 && (
+          <div className="frame-tag">Analysing frame {(frame ?? 0) + 1} / {nFrames}</div>
+        )}
         {!structure && <div className="muted">Select a structure to analyse.</div>}
-        {structure && tab === "dssp" && <Dssp structure={structure} picked={picked} />}
-        {structure && tab === "gyration" && <Gyration structure={structure} picked={picked} />}
-        {structure && tab === "rama" && <Rama structure={structure} picked={picked} />}
+        {structure && tab === "dssp" && <Dssp structure={structure} picked={picked} frame={frame} />}
+        {structure && tab === "gyration" && <Gyration structure={structure} picked={picked} frame={frame} />}
+        {structure && tab === "rama" && <Rama structure={structure} picked={picked} frame={frame} />}
         {structure && tab === "hbonds" && <HBonds structure={structure} picked={picked} />}
-        {structure && tab === "contacts" && <Contacts structure={structure} picked={picked} />}
-        {structure && tab === "sasa" && <Sasa structure={structure} picked={picked} />}
-        {structure && tab === "distance" && <Distance structure={structure} picked={picked} />}
-        {structure && tab === "helix" && <Helix structure={structure} picked={picked} />}
+        {structure && tab === "contacts" && <Contacts structure={structure} picked={picked} frame={frame} />}
+        {structure && tab === "sasa" && <Sasa structure={structure} picked={picked} frame={frame} />}
+        {structure && tab === "distance" && <Distance structure={structure} picked={picked} frame={frame} />}
+        {structure && tab === "helix" && <Helix structure={structure} picked={picked} frame={frame} />}
         {structure && tab === "rmsd" && <Rmsd structure={structure} structures={structures} picked={picked} />}
         {structure && tab === "rmsf" && <Rmsf structure={structure} picked={picked} />}
         {structure && tab === "hole" && <Hole structure={structure} picked={picked} />}
@@ -97,12 +102,13 @@ function useRunner() {
 
 // Shared prop shape for the simple, selection-only analyses.
 type SP = { structure: StructureRef; picked: PickedSelection | null };
+type FP = SP & { frame: number | null }; // frame-aware variant
 const useSel = (picked: PickedSelection | null, set: (s: string) => void) =>
   [{ label: "Use as selection", onClick: () => set(picked!.mda) }];
 
 const SS_COLOR: Record<string, string> = { H: "#4f9dff", E: "#e0a64b", "-": "#6b7280" };
 
-function Dssp({ structure, picked }: SP) {
+function Dssp({ structure, picked, frame }: FP) {
   const [sele, setSele] = useState("protein");
   const [res, setRes] = useState<any>(null);
   const { busy, error, run } = useRunner();
@@ -110,7 +116,7 @@ function Dssp({ structure, picked }: SP) {
     <>
       <FromSelection picked={picked} actions={useSel(picked, setSele)} />
       <label className="field"><span>Selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
-      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.dssp(structure.id, sele)))}>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.dssp(structure.id, sele, frame)))}>
         {busy ? "Assigning…" : "Assign secondary structure"}
       </button>
       {error && <div className="error">{error}</div>}
@@ -144,7 +150,7 @@ function Dssp({ structure, picked }: SP) {
   );
 }
 
-function Gyration({ structure, picked }: SP) {
+function Gyration({ structure, picked, frame }: FP) {
   const [sele, setSele] = useState("protein");
   const [res, setRes] = useState<any>(null);
   const { busy, error, run } = useRunner();
@@ -152,7 +158,7 @@ function Gyration({ structure, picked }: SP) {
     <>
       <FromSelection picked={picked} actions={useSel(picked, setSele)} />
       <label className="field"><span>Selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
-      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.gyration(structure.id, sele)))}>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.gyration(structure.id, sele, frame)))}>
         {busy ? "Computing…" : "Compute Rg"}
       </button>
       {error && <div className="error">{error}</div>}
@@ -171,7 +177,7 @@ function Gyration({ structure, picked }: SP) {
 
 const REGION_COLOR: Record<string, string> = { "alpha-R": "#4f9dff", beta: "#e0a64b", "alpha-L": "#46c08a", other: "#6b7280" };
 
-function Rama({ structure, picked }: SP) {
+function Rama({ structure, picked, frame }: FP) {
   const [sele, setSele] = useState("protein");
   const [res, setRes] = useState<any>(null);
   const { busy, error, run } = useRunner();
@@ -181,7 +187,7 @@ function Rama({ structure, picked }: SP) {
     <>
       <FromSelection picked={picked} actions={useSel(picked, setSele)} />
       <label className="field"><span>Selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
-      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.ramachandran(structure.id, sele)))}>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.ramachandran(structure.id, sele, frame)))}>
         {busy ? "Computing…" : "Compute φ/ψ"}
       </button>
       {error && <div className="error">{error}</div>}
@@ -260,7 +266,7 @@ function Sparkline({ values }: { values: number[] }) {
   );
 }
 
-function Contacts({ structure, picked }: SP) {
+function Contacts({ structure, picked, frame }: FP) {
   const [sele, setSele] = useState("protein");
   const [cutoff, setCutoff] = useState(4.5);
   const [res, setRes] = useState<any>(null);
@@ -272,7 +278,7 @@ function Contacts({ structure, picked }: SP) {
       <label className="field"><span>Contact cutoff: {cutoff.toFixed(1)} Å</span>
         <input type="range" min={3} max={8} step={0.5} value={cutoff} onChange={(e) => setCutoff(parseFloat(e.target.value))} />
       </label>
-      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.contacts(structure.id, sele, cutoff)))}>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.contacts(structure.id, sele, cutoff, frame)))}>
         {busy ? "Computing…" : "Find contacts & salt bridges"}
       </button>
       {error && <div className="error">{error}</div>}
@@ -308,7 +314,7 @@ function Contacts({ structure, picked }: SP) {
   );
 }
 
-function Sasa({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {
+function Sasa({ structure, picked, frame }: FP) {
   const [sele, setSele] = useState("");
   const [res, setRes] = useState<any>(null);
   const { busy, error, run } = useRunner();
@@ -318,7 +324,7 @@ function Sasa({ structure, picked }: { structure: StructureRef; picked: PickedSe
       <label className="field"><span>Selection (blank = whole structure)</span>
         <input value={sele} placeholder="protein" onChange={(e) => setSele(e.target.value)} />
       </label>
-      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.sasa(structure.id, sele || undefined)))}>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.sasa(structure.id, sele || undefined, frame)))}>
         {busy ? "Computing…" : "Compute SASA"}
       </button>
       {error && <div className="error">{error}</div>}
@@ -346,7 +352,7 @@ function Sasa({ structure, picked }: { structure: StructureRef; picked: PickedSe
   );
 }
 
-function Distance({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {
+function Distance({ structure, picked, frame }: FP) {
   const [a, setA] = useState("segid A and resid 1");
   const [b, setB] = useState("segid A and resid 10");
   const [mode, setMode] = useState("ca");
@@ -370,7 +376,7 @@ function Distance({ structure, picked }: { structure: StructureRef; picked: Pick
           <option value="cog">Centre of geometry</option>
         </select>
       </label>
-      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.distance(structure.id, a, b, mode)))}>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.distance(structure.id, a, b, mode, false, frame)))}>
         {busy ? "Measuring…" : "Measure distance"}
       </button>
       {error && <div className="error">{error}</div>}
@@ -384,7 +390,7 @@ function Distance({ structure, picked }: { structure: StructureRef; picked: Pick
   );
 }
 
-function Helix({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {
+function Helix({ structure, picked, frame }: FP) {
   const [sele, setSele] = useState("protein");
   const [axis, setAxis] = useState("z");
   const [res, setRes] = useState<any>(null);
@@ -402,7 +408,7 @@ function Helix({ structure, picked }: { structure: StructureRef; picked: PickedS
           <option value="y">Y axis</option>
         </select>
       </label>
-      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.helix(structure.id, sele, axis)))}>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.helix(structure.id, sele, axis, frame)))}>
         {busy ? "Fitting helix…" : "Analyse helix geometry"}
       </button>
       {error && <div className="error">{error}</div>}

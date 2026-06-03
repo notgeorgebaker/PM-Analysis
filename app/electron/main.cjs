@@ -4,10 +4,26 @@
 //   2. Open the desktop window with the React UI.
 //   3. Tear the backend down cleanly on exit.
 
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 const http = require("node:http");
+const fs = require("node:fs/promises");
+
+// Native "Save image as…" dialog used by the Export menu. The renderer hands us
+// the encoded bytes + suggested filename and file-type filters; we show the host
+// file browser and write the chosen path.
+ipcMain.handle("pma:save-file", async (_evt, { defaultName, data, filters }) => {
+  const win = BrowserWindow.getFocusedWindow();
+  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    title: "Export image",
+    defaultPath: defaultName,
+    filters: filters || [{ name: "Image", extensions: ["png"] }],
+  });
+  if (canceled || !filePath) return { saved: false };
+  await fs.writeFile(filePath, Buffer.from(data));
+  return { saved: true, path: filePath };
+});
 
 const BACKEND_PORT = process.env.PMA_PORT || "8765";
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;

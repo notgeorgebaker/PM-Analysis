@@ -7,14 +7,30 @@ interface Props {
   onLoaded: (s: StructureRef) => void;
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
+  onTrajectoryAttached: (id: string, info: { n_frames: number; dt_ps: number }) => void;
 }
 
-export function ImportPanel({ structures, activeId, onLoaded, onSelect, onRemove }: Props) {
+export function ImportPanel({ structures, activeId, onLoaded, onSelect, onRemove, onTrajectoryAttached }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const trajRef = useRef<HTMLInputElement>(null);
   const [pdbId, setPdbId] = useState("");
   const [uniprot, setUniprot] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function attachTraj(file: File) {
+    if (!activeId) return;
+    setBusy("trajectory");
+    setError(null);
+    try {
+      const info = await api.attachTrajectory(activeId, file);
+      onTrajectoryAttached(activeId, info);
+    } catch (e: any) {
+      setError(e.message || String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function run(label: string, fn: () => Promise<StructureRef>) {
     setBusy(label);
@@ -80,8 +96,34 @@ export function ImportPanel({ structures, activeId, onLoaded, onSelect, onRemove
             </div>
           </label>
 
-          <button className="ghost" style={{ width: "100%" }} onClick={() => run("sample", () => api.loadSample("demo_helix.pdb"))}>
-            Load demo structure
+          <div className="row tight" style={{ marginTop: 0 }}>
+            <button className="ghost" onClick={() => run("sample", () => api.loadSample("demo_helix.pdb"))}>
+              Demo structure
+            </button>
+            <button className="ghost" onClick={() => run("sample", () => api.loadSample("demo_ensemble.pdb"))}>
+              Demo trajectory
+            </button>
+          </div>
+
+          <input
+            ref={trajRef}
+            type="file"
+            accept=".dcd,.xtc,.trr,.nc,.netcdf"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) attachTraj(f);
+              e.target.value = "";
+            }}
+          />
+          <button
+            className="ghost"
+            style={{ width: "100%", marginTop: 6 }}
+            disabled={!activeId}
+            title={activeId ? "Attach a DCD/XTC trajectory to the active structure" : "Select a structure first"}
+            onClick={() => trajRef.current?.click()}
+          >
+            Attach trajectory (DCD/XTC)…
           </button>
 
           {busy && <div className="busy">Loading ({busy})…</div>}

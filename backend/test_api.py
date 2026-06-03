@@ -181,6 +181,38 @@ def test_missing_structure_is_404():
     assert client.get("/structures/nope/summary").status_code == 404
 
 
+def test_single_structure_has_no_trajectory():
+    sid = _load_demo()
+    info = client.get(f"/structures/{sid}/trajectory/info").json()
+    assert info["n_frames"] == 1 and info["has_trajectory"] is False
+
+
+def test_ensemble_is_a_trajectory():
+    sid = client.post("/structures/sample/demo_ensemble.pdb").json()["id"]
+    info = client.get(f"/structures/{sid}/trajectory/info").json()
+    assert info["n_frames"] == 8 and info["has_trajectory"] is True
+    assert info["total_ns"] > 0
+
+
+def test_frame_aware_analysis():
+    sid = client.post("/structures/sample/demo_ensemble.pdb").json()["id"]
+    rg0 = client.post(f"/structures/{sid}/analysis/gyration", json={"selection": "protein", "frame": 0}).json()["rg"]
+    rg5 = client.post(f"/structures/{sid}/analysis/gyration", json={"selection": "protein", "frame": 5}).json()["rg"]
+    assert rg0 != rg5  # different frames -> different geometry
+
+
+def test_attach_dcd_trajectory():
+    import os as _os
+    sid = client.post("/structures/sample/demo_helix.pdb").json()["id"]
+    assert client.get(f"/structures/{sid}/trajectory/info").json()["n_frames"] == 1
+    dcd = _os.path.join(_os.path.dirname(__file__), "samples", "demo.dcd")
+    with open(dcd, "rb") as fh:
+        r = client.post(f"/structures/{sid}/trajectory",
+                        files={"file": ("demo.dcd", fh, "application/octet-stream")})
+    assert r.status_code == 200, r.text
+    assert r.json()["n_frames"] == 8
+
+
 if __name__ == "__main__":
     import sys
 

@@ -41,13 +41,17 @@ class Structure:
     path: str
     fmt: str  # "pdb" or "cif"
     source: str = "local"  # local | rcsb | alphafold
+    traj_path: str | None = None  # optional trajectory coordinate file (DCD/XTC/…)
     meta: dict[str, Any] = field(default_factory=dict)
     _universe: Any = None  # cached MDAnalysis Universe
 
     def universe(self):
         if self._universe is None:
             mda = _require_mda()
-            self._universe = mda.Universe(self.path)
+            if self.traj_path:
+                self._universe = mda.Universe(self.path, self.traj_path)
+            else:
+                self._universe = mda.Universe(self.path)
         return self._universe
 
 
@@ -94,6 +98,44 @@ class StructureStore:
                 os.remove(s.path)
             except OSError:
                 pass
+
+    # -- trajectories --------------------------------------------------------
+
+    def attach_trajectory(self, sid: str, data: bytes, fmt: str) -> dict[str, Any]:
+        """Attach a trajectory (DCD/XTC/TRR/…) to a structure used as topology."""
+        s = self.get(sid)
+        fmt = fmt.lower().lstrip(".")
+        path = os.path.join(self.workdir, f"{sid}_traj.{fmt}")
+        with open(path, "wb") as fh:
+            fh.write(data)
+        s.traj_path = path
+        s._universe = None  # force rebuild with the trajectory
+        return self.trajectory_info(sid)
+
+    def trajectory_info(self, sid: str) -> dict[str, Any]:
+        u = self.get(sid).universe()
+        n = int(len(u.trajectory))
+        try:
+            dt = float(u.trajectory.dt)
+        except Exception:
+            dt = 1.0
+        if not dt or dt != dt:  # 0 or NaN
+            dt = 1.0
+        return {
+            "n_frames": n,
+            "dt_ps": dt,
+            "total_ns": round(n * dt / 1000.0, 5),
+            "has_trajectory": n > 1,
+        }
+
+    @staticmethod
+    def set_frame(universe, frame: int | None) -> None:
+        """Move a Universe to a given frame (no-op if frame is None/out of range)."""
+        if frame is None:
+            return
+        n = len(universe.trajectory)
+        if 0 <= frame < n:
+            universe.trajectory[frame]
 
     # -- introspection -------------------------------------------------------
 

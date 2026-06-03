@@ -24,6 +24,7 @@ export class Viewer {
   private stage: Stage;
   private component: any = null;
   private reps = new Map<string, any>();
+  private traj: any = null; // NGL Trajectory (multi-model PDB or attached DCD)
   onPick: ((info: PickInfo | null) => void) | null = null;
 
   constructor(element: HTMLElement) {
@@ -50,15 +51,51 @@ export class Viewer {
 
   private handleResize = () => this.stage.handleResize();
 
-  async load(url: string, ext: string): Promise<void> {
+  async load(url: string, ext: string, trajUrl?: string | null): Promise<void> {
     this.clear();
     const fmt = ext === "cif" || ext === "mmcif" ? "cif" : "pdb";
-    this.component = await this.stage.loadFile(url, { ext: fmt });
+    // asTrajectory loads every MODEL of a multi-model PDB as trajectory frames.
+    this.component = await this.stage.loadFile(url, { ext: fmt, asTrajectory: fmt === "pdb" });
     this.component.autoView();
+
+    try {
+      if (trajUrl) {
+        // attach an external trajectory (e.g. DCD) on top of the topology
+        const el = this.component.addTrajectory(trajUrl);
+        this.traj = el.trajectory || el;
+      } else if (this.component.frames && this.component.frames.length > 1) {
+        // multi-model PDB -> make a trajectory from the loaded frames
+        const el = this.component.addTrajectory();
+        this.traj = el.trajectory || el;
+      }
+    } catch (e) {
+      // Trajectory playback is best-effort; the static view still works.
+      console.warn("trajectory init failed", e);
+      this.traj = null;
+    }
+  }
+
+  setFrame(i: number): void {
+    if (!this.traj) return;
+    try {
+      this.traj.setFrame(i);
+    } catch (e) {
+      console.warn("setFrame failed", e);
+    }
+  }
+
+  hasTrajectory(): boolean {
+    return !!this.traj;
+  }
+
+  /** PNG snapshot of the current view at `scale`x resolution. */
+  async snapshot(scale = 2): Promise<Blob> {
+    return this.stage.makeImage({ factor: scale, antialias: true, trim: false, transparent: false });
   }
 
   clear(): void {
     this.reps.clear();
+    this.traj = null;
     this.stage.removeAllComponents();
     this.component = null;
   }

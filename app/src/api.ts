@@ -125,6 +125,20 @@ export const api = {
 
   summary: (id: string) => req<Summary>(`/structures/${id}/summary`),
   selectionTree: (id: string) => req<SelectionTree>(`/structures/${id}/selection-tree`),
+
+  trajectoryInfo: (id: string) =>
+    req<{ n_frames: number; dt_ps: number; total_ns: number; has_trajectory: boolean }>(
+      `/structures/${id}/trajectory/info`
+    ),
+  trajUrl: (id: string) => `${API_BASE}/structures/${id}/trajectory/file`,
+  attachTrajectory: async (id: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_BASE}/structures/${id}/trajectory`, { method: "POST", body: form });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.detail || "trajectory upload failed");
+    return body as { n_frames: number; dt_ps: number; total_ns: number; has_trajectory: boolean };
+  },
   select: (id: string, selection: string) =>
     req<SelectResult>(`/structures/${id}/select`, {
       method: "POST",
@@ -133,15 +147,15 @@ export const api = {
   residue: (id: string, resid: number, segid?: string) =>
     req<any>(`/structures/${id}/residue/${resid}${segid ? `?segid=${segid}` : ""}`),
 
-  sasa: (id: string, selection?: string) =>
+  sasa: (id: string, selection?: string, frame?: number | null) =>
     req<any>(`/structures/${id}/analysis/sasa`, {
       method: "POST",
-      body: JSON.stringify({ selection: selection || null }),
+      body: JSON.stringify({ selection: selection || null, frame: frame ?? null }),
     }),
-  distance: (id: string, sel_a: string, sel_b: string, mode: string, matrix = false) =>
+  distance: (id: string, sel_a: string, sel_b: string, mode: string, matrix = false, frame?: number | null) =>
     req<any>(`/structures/${id}/analysis/distance`, {
       method: "POST",
-      body: JSON.stringify({ sel_a, sel_b, mode, matrix }),
+      body: JSON.stringify({ sel_a, sel_b, mode, matrix, frame: frame ?? null }),
     }),
   rmsf: (id: string, selection: string) =>
     req<any>(`/structures/${id}/analysis/rmsf`, {
@@ -158,19 +172,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ selection }),
     }),
-  helix: (id: string, selection: string, ref_axis: string) =>
+  helix: (id: string, selection: string, ref_axis: string, frame?: number | null) =>
     req<any>(`/structures/${id}/analysis/helix`, {
       method: "POST",
-      body: JSON.stringify({ selection, ref_axis }),
+      body: JSON.stringify({ selection, ref_axis, frame: frame ?? null }),
     }),
-  gyration: (id: string, selection: string) =>
-    req<any>(`/structures/${id}/analysis/gyration`, { method: "POST", body: JSON.stringify({ selection }) }),
-  dssp: (id: string, selection: string) =>
-    req<any>(`/structures/${id}/analysis/dssp`, { method: "POST", body: JSON.stringify({ selection }) }),
-  ramachandran: (id: string, selection: string) =>
-    req<any>(`/structures/${id}/analysis/ramachandran`, { method: "POST", body: JSON.stringify({ selection }) }),
-  contacts: (id: string, selection: string, cutoff: number) =>
-    req<any>(`/structures/${id}/analysis/contacts`, { method: "POST", body: JSON.stringify({ selection, cutoff }) }),
+  gyration: (id: string, selection: string, frame?: number | null) =>
+    req<any>(`/structures/${id}/analysis/gyration`, { method: "POST", body: JSON.stringify({ selection, frame: frame ?? null }) }),
+  dssp: (id: string, selection: string, frame?: number | null) =>
+    req<any>(`/structures/${id}/analysis/dssp`, { method: "POST", body: JSON.stringify({ selection, frame: frame ?? null }) }),
+  ramachandran: (id: string, selection: string, frame?: number | null) =>
+    req<any>(`/structures/${id}/analysis/ramachandran`, { method: "POST", body: JSON.stringify({ selection, frame: frame ?? null }) }),
+  contacts: (id: string, selection: string, cutoff: number, frame?: number | null) =>
+    req<any>(`/structures/${id}/analysis/contacts`, { method: "POST", body: JSON.stringify({ selection, cutoff, frame: frame ?? null }) }),
   hbonds: (id: string, selection: string) =>
     req<any>(`/structures/${id}/analysis/hbonds`, { method: "POST", body: JSON.stringify({ selection }) }),
 };

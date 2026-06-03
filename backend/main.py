@@ -47,6 +47,7 @@ class DistanceBody(BaseModel):
     sel_b: str
     mode: str = "ca"  # ca | com | cog
     matrix: bool = False
+    frame: int | None = None
 
 
 class RMSDBody(BaseModel):
@@ -57,20 +58,24 @@ class RMSDBody(BaseModel):
 
 class AnalysisSelBody(BaseModel):
     selection: str | None = None
+    frame: int | None = None
 
 
 class HelixBody(BaseModel):
     selection: str = "protein"
     ref_axis: str = "z"  # x | y | z
+    frame: int | None = None
 
 
 class ScopedBody(BaseModel):
     selection: str = "protein"
+    frame: int | None = None
 
 
 class ContactsBody(BaseModel):
     selection: str = "protein"
     cutoff: float = 4.5
+    frame: int | None = None
 
 
 class HBondBody(BaseModel):
@@ -169,6 +174,33 @@ def structure_file(sid: str):
     return FileResponse(s.path, media_type=media, filename=f"{s.id}.{s.fmt}")
 
 
+# --- trajectories -----------------------------------------------------------
+
+
+@app.get("/structures/{sid}/trajectory/info")
+def trajectory_info(sid: str):
+    return _guard(store.trajectory_info, sid)
+
+
+@app.post("/structures/{sid}/trajectory")
+async def attach_trajectory(sid: str, file: UploadFile = File(...)):
+    _guard(store.get, sid)  # 404 if structure missing
+    name = file.filename or "trajectory.dcd"
+    fmt = name.rsplit(".", 1)[-1].lower() if "." in name else "dcd"
+    if fmt not in ("dcd", "xtc", "trr", "nc", "netcdf"):
+        raise HTTPException(status_code=400, detail=f"Unsupported trajectory format '.{fmt}'")
+    data = await file.read()
+    return _guard(store.attach_trajectory, sid, data, fmt)
+
+
+@app.get("/structures/{sid}/trajectory/file")
+def trajectory_file(sid: str):
+    s = _guard(store.get, sid)
+    if not s.traj_path or not os.path.exists(s.traj_path):
+        raise HTTPException(status_code=404, detail="No trajectory attached")
+    return FileResponse(s.traj_path, filename=os.path.basename(s.traj_path))
+
+
 @app.get("/structures/{sid}/summary")
 def structure_summary(sid: str):
     return _guard(store.summary, sid)
@@ -201,14 +233,15 @@ def delete_structure(sid: str):
 
 @app.post("/structures/{sid}/analysis/sasa")
 def analysis_sasa(sid: str, body: AnalysisSelBody):
-    return _guard(analysis.sasa, store, sid, body.selection)
+    return _guard(analysis.sasa, store, sid, body.selection, frame=body.frame)
 
 
 @app.post("/structures/{sid}/analysis/distance")
 def analysis_distance(sid: str, body: DistanceBody):
     if body.matrix:
-        return _guard(analysis.distance_matrix, store, sid, body.sel_a, body.sel_b, body.mode)
-    return _guard(analysis.distance, store, sid, body.sel_a, body.sel_b, body.mode)
+        return _guard(analysis.distance_matrix, store, sid, body.sel_a, body.sel_b, body.mode,
+                      frame=body.frame)
+    return _guard(analysis.distance, store, sid, body.sel_a, body.sel_b, body.mode, frame=body.frame)
 
 
 @app.post("/analysis/rmsd")
@@ -223,27 +256,27 @@ def analysis_rmsf(sid: str, body: AnalysisSelBody):
 
 @app.post("/structures/{sid}/analysis/helix")
 def analysis_helix(sid: str, body: HelixBody):
-    return _guard(analysis.helix_geometry, store, sid, body.selection, body.ref_axis)
+    return _guard(analysis.helix_geometry, store, sid, body.selection, body.ref_axis, frame=body.frame)
 
 
 @app.post("/structures/{sid}/analysis/gyration")
 def analysis_gyration(sid: str, body: ScopedBody):
-    return _guard(analysis.radius_of_gyration, store, sid, body.selection)
+    return _guard(analysis.radius_of_gyration, store, sid, body.selection, frame=body.frame)
 
 
 @app.post("/structures/{sid}/analysis/dssp")
 def analysis_dssp(sid: str, body: ScopedBody):
-    return _guard(analysis.secondary_structure, store, sid, body.selection)
+    return _guard(analysis.secondary_structure, store, sid, body.selection, frame=body.frame)
 
 
 @app.post("/structures/{sid}/analysis/ramachandran")
 def analysis_ramachandran(sid: str, body: ScopedBody):
-    return _guard(analysis.ramachandran, store, sid, body.selection)
+    return _guard(analysis.ramachandran, store, sid, body.selection, frame=body.frame)
 
 
 @app.post("/structures/{sid}/analysis/contacts")
 def analysis_contacts(sid: str, body: ContactsBody):
-    return _guard(analysis.contacts, store, sid, body.selection, body.cutoff)
+    return _guard(analysis.contacts, store, sid, body.selection, body.cutoff, frame=body.frame)
 
 
 @app.post("/structures/{sid}/analysis/hbonds")

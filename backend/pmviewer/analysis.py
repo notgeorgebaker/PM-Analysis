@@ -7,6 +7,7 @@ required dependency is missing, and ``ValueError`` for bad inputs/selections.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import numpy as np
@@ -21,7 +22,7 @@ DISTANCE_MODES = {"ca", "com", "cog"}  # alpha-carbon, centre of mass, centre of
 
 
 def sasa(store: StructureStore, sid: str, selection: str | None = None,
-         probe_radius: float = 1.4) -> dict[str, Any]:
+         probe_radius: float = 1.4, frame: int | None = None) -> dict[str, Any]:
     try:
         import freesasa
     except Exception as exc:  # pragma: no cover
@@ -33,10 +34,29 @@ def sasa(store: StructureStore, sid: str, selection: str | None = None,
     if struct.fmt != "pdb":
         raise ValueError("SASA currently requires a PDB-format structure.")
 
+    # For a trajectory frame, write the current frame to a temp PDB for freesasa.
+    sasa_path = struct.path
+    tmp = None
+    if frame is not None:
+        u = struct.universe()
+        store.set_frame(u, frame)
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(suffix=".pdb", delete=False)
+        tmp.close()
+        u.atoms.write(tmp.name)
+        sasa_path = tmp.name
+
     freesasa.setVerbosity(freesasa.silent)
     params = freesasa.Parameters({"probe-radius": probe_radius})
-    fs_struct = freesasa.Structure(struct.path)
-    result = freesasa.calc(fs_struct, params)
+    try:
+        fs_struct = freesasa.Structure(sasa_path)
+        result = freesasa.calc(fs_struct, params)
+    finally:
+        if tmp is not None:
+            try:
+                os.remove(tmp.name)
+            except OSError:
+                pass
 
     # Optionally restrict the reported per-residue table to a selection.
     wanted: set[tuple[str, int]] | None = None
@@ -98,11 +118,12 @@ def _reference_points(atomgroup, mode: str) -> tuple[np.ndarray, list[dict]]:
 
 
 def distance(store: StructureStore, sid: str, sel_a: str, sel_b: str,
-             mode: str = "ca") -> dict[str, Any]:
+             mode: str = "ca", frame: int | None = None) -> dict[str, Any]:
     """Single distance between the reference points of two selections."""
     if mode not in DISTANCE_MODES:
         raise ValueError(f"mode must be one of {sorted(DISTANCE_MODES)}")
     u = store.get(sid).universe()
+    store.set_frame(u, frame)
     ga, gb = u.select_atoms(sel_a), u.select_atoms(sel_b)
     if ga.n_atoms == 0 or gb.n_atoms == 0:
         raise ValueError("One of the selections matched no atoms.")
@@ -124,12 +145,14 @@ def distance(store: StructureStore, sid: str, sel_a: str, sel_b: str,
 
 
 def distance_matrix(store: StructureStore, sid: str, sel_a: str, sel_b: str,
-                    mode: str = "ca", max_dim: int = 400) -> dict[str, Any]:
+                    mode: str = "ca", max_dim: int = 400,
+                    frame: int | None = None) -> dict[str, Any]:
     """Per-residue inter-residue distance matrix (like the static analogue of
     your time-series inter-residue CSVs)."""
     if mode not in DISTANCE_MODES:
         raise ValueError(f"mode must be one of {sorted(DISTANCE_MODES)}")
     u = store.get(sid).universe()
+    store.set_frame(u, frame)
     ca, la = _reference_points(u.select_atoms(sel_a), mode)
     cb, lb = _reference_points(u.select_atoms(sel_b), mode)
     if len(la) == 0 or len(lb) == 0:
@@ -157,7 +180,7 @@ _AXES = {"x": [1.0, 0.0, 0.0], "y": [0.0, 1.0, 0.0], "z": [0.0, 0.0, 1.0]}
 
 
 def helix_geometry(store: StructureStore, sid: str, selection: str = "protein",
-                   ref_axis: str = "z") -> dict[str, Any]:
+                   ref_axis: str = "z", frame: int | None = None) -> dict[str, Any]:
     """Helix geometry via HELANAL (Bansal local-axis method).
 
     Reports the per-residue helical twist (torsion), rise and residues-per-turn,
@@ -181,8 +204,12 @@ def helix_geometry(store: StructureStore, sid: str, selection: str = "protein",
             f"resolved to {ca.n_atoms}. Pick a longer, continuous helix."
         )
 
-    h = hel.HELANAL(u, select=sel, ref_axis=_AXES[ref_axis]).run()
-    r = h.results
+    ha = hel.HELANAL(u, select=sel, ref_axis=_AXES[ref_axis])
+    if frame is not None:
+        ha.run(start=frame, stop=frame + 1)
+    else:
+        ha.run()
+    r = ha.results
 
     axis = np.asarray(r.global_axis).reshape(-1)[:3]
     axis = axis / (np.linalg.norm(axis) or 1.0)
@@ -295,9 +322,11 @@ def rmsf(store: StructureStore, sid: str, selection: str = "name CA") -> dict[st
 
 
 def radius_of_gyration(store: StructureStore, sid: str,
-                       selection: str = "protein") -> dict[str, Any]:
+                       selection: str = "protein",
+                       frame: int | None = None) -> dict[str, Any]:
     """Overall and per-chain radius of gyration (compactness)."""
     u = store.get(sid).universe()
+    store.set_frame(u, frame)
     g = u.select_atoms(selection)
     if g.n_atoms == 0:
         raise ValueError("Selection matched no atoms.")
@@ -323,7 +352,8 @@ _SS_NAMES = {"H": "Helix", "E": "Strand", "-": "Loop/coil"}
 
 
 def secondary_structure(store: StructureStore, sid: str,
-                        selection: str = "protein") -> dict[str, Any]:
+                        selection: str = "protein",
+                        frame: int | None = None) -> dict[str, Any]:
     """Per-residue secondary structure via the pure-Python DSSP (no external binary)."""
     try:
         from MDAnalysis.analysis.dssp import DSSP
@@ -335,11 +365,15 @@ def secondary_structure(store: StructureStore, sid: str,
     if sel.select_atoms("protein").n_atoms == 0:
         raise ValueError("Secondary structure needs a protein selection.")
     try:
-        res = DSSP(sel).run()
+        dssp = DSSP(sel)
+        if frame is not None:
+            dssp.run(start=frame, stop=frame + 1)
+        else:
+            dssp.run(stop=1)  # first frame only (per-frame UI drives the rest)
     except Exception as exc:
         raise ValueError(f"DSSP failed: {exc}") from exc
 
-    codes = list(res.results.dssp[0])  # first frame, 3-state H / E / -
+    codes = list(dssp.results.dssp[0])  # 3-state H / E / -
     cas = sel.select_atoms("protein and name CA")
     residues = list(cas.residues)
     per_residue = []
@@ -373,7 +407,8 @@ def _rama_region(phi: float, psi: float) -> str:
 
 
 def ramachandran(store: StructureStore, sid: str,
-                 selection: str = "protein") -> dict[str, Any]:
+                 selection: str = "protein",
+                 frame: int | None = None) -> dict[str, Any]:
     """Backbone phi/psi dihedrals per residue, with rough region assignment."""
     try:
         from MDAnalysis.analysis.dihedrals import Ramachandran
@@ -384,7 +419,11 @@ def ramachandran(store: StructureStore, sid: str,
     sel = u.select_atoms(selection)
     if sel.select_atoms("protein").n_atoms == 0:
         raise ValueError("Ramachandran needs a protein selection.")
-    rama = Ramachandran(sel).run()
+    rama = Ramachandran(sel)
+    if frame is not None:
+        rama.run(start=frame, stop=frame + 1)
+    else:
+        rama.run(stop=1)
     angles = np.asarray(rama.results.angles[0])  # (n_res_with_phi_psi, 2)
     # residues that have both phi and psi (interior residues), in order
     residues = [r for r in sel.residues
@@ -402,11 +441,12 @@ def ramachandran(store: StructureStore, sid: str,
 
 def contacts(store: StructureStore, sid: str, selection: str = "protein",
              cutoff: float = 4.5, min_seq_sep: int = 2,
-             max_pairs: int = 1000) -> dict[str, Any]:
+             max_pairs: int = 1000, frame: int | None = None) -> dict[str, Any]:
     """Residue-residue heavy-atom contacts and salt bridges within a selection."""
     from MDAnalysis.lib.distances import capped_distance
 
     u = store.get(sid).universe()
+    store.set_frame(u, frame)
     heavy = u.select_atoms(f"({selection}) and not name H*")
     if heavy.n_atoms == 0:
         raise ValueError("Selection matched no heavy atoms.")
