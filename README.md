@@ -1,10 +1,14 @@
-# PM-Analysis — a Lightroom take on VMD
+# Meon Spring — a Lightroom take on VMD
+
+> **Meon Spring** is the data-analysis & model-viewing app in the **Meon
+> Scientific Services** suite (alongside *Meon River* — system generation — and
+> *Meon Lake* — the ML/AI-accelerated MD engine). This repository is Meon Spring.
 
 A modern, clean desktop app for protein visualisation and analysis. It borrows
 Adobe Lightroom's interaction model — a bright 3D viewport in the centre, a
 **non-destructive stack of representation "layers"** on one side, and a focused
-**inspector + analysis** panel on the other — and applies it to the kind of work
-you'd otherwise do in VMD.
+**selection + inspector + analysis** panel on the other — and applies it to the
+kind of work you'd otherwise do in VMD.
 
 > **Status: first draft / v0.1.** The skeleton is end-to-end functional. Lots of
 > tweaking expected along the way — this is the foundation to iterate on.
@@ -17,9 +21,13 @@ you'd otherwise do in VMD.
 - **Clean representations** — cartoon, surface, ball-and-stick, licorice,
   spacefill, ribbon, rope and more, each its own non-destructive layer with its
   own selection, colour scheme and opacity. Stack and tweak them live.
-- **Selections & sub-selections** — VMD/MDAnalysis-style selection language
-  (`protein and chain A and resid 11:41`, `hetero and not water`, …). Count
-  matches, focus the camera, or promote any selection to its own layer.
+- **Selection tree (no syntax required)** — the structure is auto-classified
+  into plain-language molecule types: **Protein, Nucleic acids, Lipids, Waters,
+  Ions, Other/ligands**. Absent types say so ("No lipids found") instead of
+  failing. Drill into a type to see individual residues by full name
+  ("Alanine 41"), then click to focus the camera or promote it to its own
+  representation layer. A filter box narrows large proteins instantly.
+  Power users still get a raw MDAnalysis/VMD selection box in the inspector.
 - **Residue inspector** — click an atom to see its residue's name, chain,
   atom count and centre of geometry.
 - **Analysis suite**
@@ -87,14 +95,14 @@ message rather than failing silently.
 
 ## A note on selection syntax
 
-Two layers, two (very similar) dialects:
+There are two underlying dialects — NGL (drives the viewport: `:A`, `1-41`,
+`protein`) and MDAnalysis/VMD (drives analysis: `segid A`, `resid 11:41`,
+`name CA`). **You normally never see either.** The selection tree generates
+both for every node behind the scenes (see `backend/pmviewer/selection.py`),
+so picking "Alanine 41" just works in both the viewport and the analysis tools.
 
-- The **viewport representations** use NGL selection syntax (`:A`, `1-41`, `protein`).
-- The **analysis panel** uses MDAnalysis/VMD syntax (`segid A`, `resid 11:41`, `name CA`).
-
-Both are close to the VMD language you already know; the analysis side matches
-your existing notebook selections almost verbatim. Unifying these behind one
-parser is a natural early tweak.
+The raw MDAnalysis/VMD box in the inspector remains for power users, and matches
+your existing notebook selections almost verbatim.
 
 ## Roadmap (next passes)
 
@@ -103,7 +111,8 @@ parser is a natural early tweak.
 - In-viewport **measurement tools** (click-to-measure distances/angles) and
   colour-by-analysis (paint SASA or RMSF straight onto the structure).
 - Plots for analysis output (currently tabular), and CSV export.
-- A single unified selection parser shared by the viewport and the backend.
+- Wire the selection-tree nodes directly into the analysis panel inputs (so you
+  can pick two residues from the tree and measure between them in one click).
 - Packaged installers via `electron-builder` with a bundled Python runtime.
 
 ## Repository layout
@@ -113,6 +122,7 @@ backend/
   main.py              FastAPI app (routes + request models)
   pmviewer/
     structure.py       load / summarise / select / inspect
+    selection.py       human-readable molecule-type selection tree
     fetch.py           RCSB + AlphaFold fetching
     analysis.py        SASA, distances, RMSD, RMSF
     hole.py            HOLE2 wrapper

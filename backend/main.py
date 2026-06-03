@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from pmviewer import analysis, fetch, hole
+from pmviewer import analysis, fetch, hole, selection
 from pmviewer.structure import StructureStore
 
 WORKDIR = os.environ.get("PMA_WORKDIR", os.path.join(tempfile.gettempdir(), "pm-analysis"))
@@ -151,6 +151,12 @@ def structure_file(sid: str):
 @app.get("/structures/{sid}/summary")
 def structure_summary(sid: str):
     return _guard(store.summary, sid)
+
+
+@app.get("/structures/{sid}/selection-tree")
+def structure_selection_tree(sid: str):
+    s = _guard(store.get, sid)
+    return _guard(selection.selection_tree, s.universe())
 
 
 @app.post("/structures/{sid}/select")

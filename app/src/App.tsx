@@ -4,6 +4,7 @@ import { RepSpec, Viewer, PickInfo } from "./ngl-viewer";
 import { Viewport } from "./components/Viewport";
 import { ImportPanel } from "./components/ImportPanel";
 import { RepresentationStack, newRep } from "./components/RepresentationStack";
+import { SelectionTree } from "./components/SelectionTree";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { AnalysisPanel } from "./components/AnalysisPanel";
 
@@ -61,11 +62,15 @@ export default function App() {
   const setReps = (next: RepSpec[]) =>
     activeId && setRepsById((prev) => ({ ...prev, [activeId]: next }));
 
-  const addRepFromSelection = (sele: string) =>
+  const addRepFromSelection = (sele: string, repType = "licorice") =>
     activeId &&
     setRepsById((prev) => ({
       ...prev,
-      [activeId]: [...(prev[activeId] || []), newRep({ type: "licorice", sele, colorScheme: "element" })],
+      [activeId]: [
+        ...(prev[activeId] || []),
+        // Cartoon/ribbon read best coloured by chain; everything else by element.
+        newRep({ type: repType, sele, colorScheme: /cartoon|ribbon|rope|tube/.test(repType) ? "chainid" : "element" }),
+      ],
     }));
 
   const focus = (sele: string) => {
@@ -105,13 +110,13 @@ export default function App() {
       />
 
       <div className="sidebar right">
+        <SelectionTree structure={active} onFocus={focus} onAddRep={addRepFromSelection} />
         <RepresentationStack reps={reps} disabled={!active} onChange={setReps} onFocus={focus} />
         <InspectorPanel
           structure={active}
           summary={activeId ? summaries[activeId] || null : null}
           pick={pick}
           onFocus={focus}
-          onAddRep={addRepFromSelection}
         />
         <AnalysisPanel structure={active} structures={structures} />
       </div>

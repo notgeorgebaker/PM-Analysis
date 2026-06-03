@@ -48,6 +48,35 @@ export interface SelectResult {
   truncated: boolean;
 }
 
+export interface Selectors {
+  ngl: string;
+  mda: string;
+}
+
+export interface TreeResidue {
+  label: string; // full residue name, e.g. "Alanine"
+  resname: string;
+  resid: number;
+  segid: string;
+  chain: string;
+  selectors: Selectors;
+}
+
+export interface TreeCategory {
+  key: string;
+  label: string; // "Protein", "Lipids", ...
+  rep: string; // suggested representation type
+  present: boolean;
+  count: number;
+  selectors: Selectors;
+  residues: TreeResidue[];
+  truncated: boolean;
+}
+
+export interface SelectionTree {
+  categories: TreeCategory[];
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -84,6 +113,7 @@ export const api = {
   remove: (id: string) => req<{ deleted: string }>(`/structures/${id}`, { method: "DELETE" }),
 
   summary: (id: string) => req<Summary>(`/structures/${id}/summary`),
+  selectionTree: (id: string) => req<SelectionTree>(`/structures/${id}/selection-tree`),
   select: (id: string, selection: string) =>
     req<SelectResult>(`/structures/${id}/select`, {
       method: "POST",

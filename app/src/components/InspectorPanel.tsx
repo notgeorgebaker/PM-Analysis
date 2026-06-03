@@ -7,10 +7,9 @@ interface Props {
   summary: Summary | null;
   pick: PickInfo | null;
   onFocus: (sele: string) => void;
-  onAddRep: (sele: string) => void;
 }
 
-export function InspectorPanel({ structure, summary, pick, onFocus, onAddRep }: Props) {
+export function InspectorPanel({ structure, summary, pick, onFocus }: Props) {
   const [detail, setDetail] = useState<any>(null);
   const [sele, setSele] = useState("resid 1 to 10");
   const [selResult, setSelResult] = useState<SelectResult | null>(null);
@@ -88,13 +87,20 @@ export function InspectorPanel({ structure, summary, pick, onFocus, onAddRep }: 
       </div>
 
       <div className="section">
-        <h3>Selection</h3>
+        <h3>Advanced selection</h3>
         <div className="section-body">
-          <textarea value={sele} spellCheck={false} onChange={(e) => setSele(e.target.value)} />
+          <p className="muted" style={{ marginTop: 0 }}>
+            Most selecting is done in the Selection tree above. This box is for power
+            users: write an MDAnalysis / VMD expression and check what it matches.
+          </p>
+          <textarea
+            value={sele}
+            spellCheck={false}
+            placeholder="e.g. segid A and resid 11:41 and name CA"
+            onChange={(e) => setSele(e.target.value)}
+          />
           <div className="row" style={{ marginTop: 6 }}>
-            <button disabled={!structure} onClick={testSelection}>Count</button>
-            <button disabled={!structure} onClick={() => onFocus(sele)}>Focus</button>
-            <button disabled={!structure} className="primary" onClick={() => onAddRep(sele)}>As layer</button>
+            <button disabled={!structure} onClick={testSelection}>Count matches</button>
           </div>
           {selError && <div className="error">{selError}</div>}
           {selResult && (

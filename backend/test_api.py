@@ -60,6 +60,20 @@ def test_distance_matrix():
     assert len(d["matrix"]) == 3 and len(d["matrix"][0]) == 3
 
 
+def test_selection_tree():
+    sid = _load_demo()
+    tree = client.get(f"/structures/{sid}/selection-tree").json()
+    cats = {c["key"]: c for c in tree["categories"]}
+    # protein present with human-readable residues
+    assert cats["protein"]["present"] and cats["protein"]["count"] == 12
+    assert cats["protein"]["residues"][0]["label"] == "Alanine"
+    # absent categories report cleanly (the test case has no lipids/water/ions)
+    for absent in ("lipids", "water", "ions", "nucleic"):
+        assert cats[absent]["present"] is False and cats[absent]["count"] == 0
+    # nodes carry both viewer and analysis selectors
+    assert "ngl" in cats["protein"]["selectors"] and "mda" in cats["protein"]["selectors"]
+
+
 def test_rmsf_single_model_note():
     sid = _load_demo()
     d = client.post(f"/structures/{sid}/analysis/rmsf", json={"selection": "name CA"}).json()
