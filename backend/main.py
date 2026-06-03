@@ -59,6 +59,11 @@ class AnalysisSelBody(BaseModel):
     selection: str | None = None
 
 
+class HelixBody(BaseModel):
+    selection: str = "protein"
+    ref_axis: str = "z"  # x | y | z
+
+
 class HoleBody(BaseModel):
     selection: str = "protein"
     cpoint: list[float] | None = None
@@ -198,6 +203,11 @@ def analysis_rmsd(body: RMSDBody):
 @app.post("/structures/{sid}/analysis/rmsf")
 def analysis_rmsf(sid: str, body: AnalysisSelBody):
     return _guard(analysis.rmsf, store, sid, body.selection or "name CA")
+
+
+@app.post("/structures/{sid}/analysis/helix")
+def analysis_helix(sid: str, body: HelixBody):
+    return _guard(analysis.helix_geometry, store, sid, body.selection, body.ref_axis)
 
 
 @app.post("/structures/{sid}/analysis/hole")

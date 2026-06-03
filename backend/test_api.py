@@ -83,6 +83,24 @@ def test_selection_tree():
     assert "ngl" in cats["protein"]["selectors"] and "mda" in cats["protein"]["selectors"]
 
 
+def test_helix_geometry():
+    sid = _load_demo()
+    d = client.post(
+        f"/structures/{sid}/analysis/helix", json={"selection": "protein", "ref_axis": "z"}
+    ).json()
+    # the demo helix is an idealised alpha helix built along z
+    assert abs(d["twist_mean"] - 100.0) < 5      # ~100 deg/residue
+    assert abs(d["residues_per_turn"] - 3.6) < 0.3
+    assert d["tilt"]["z"] < 5 and d["tilt"]["x"] > 80  # axis ~parallel to z
+    assert len(d["per_window_twist"]) >= 1
+
+
+def test_helix_too_short_is_400():
+    sid = _load_demo()
+    r = client.post(f"/structures/{sid}/analysis/helix", json={"selection": "resid 1 to 4"})
+    assert r.status_code == 400
+
+
 def test_rmsf_single_model_note():
     sid = _load_demo()
     d = client.post(f"/structures/{sid}/analysis/rmsf", json={"selection": "name CA"}).json()

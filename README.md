@@ -41,6 +41,10 @@ kind of work you'd otherwise do in VMD.
   - **Inter-residue distances** between two selections, using **Cα**, **centre
     of mass**, or **centre of geometry** reference points — plus a per-residue
     distance **matrix** (the static analogue of your time-series distance CSVs).
+  - **Helix geometry** (HELANAL / Bansal local-axis): per-residue helical twist
+    (torsion), rise, residues-per-turn and bend, the global helix axis, and the
+    **tilt of that axis relative to the viewport x/y/z axes** — e.g. tilt vs the
+    membrane normal (z) for a transmembrane helix.
   - **RMSD** between two loaded structures, with optimal superposition.
   - **RMSF** per residue across models/frames (NMR ensembles & trajectories).
   - **HOLE2** pore-radius profile (wraps the external `hole` program).

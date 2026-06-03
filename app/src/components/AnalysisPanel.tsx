@@ -2,10 +2,11 @@ import { useState } from "react";
 import { api, StructureRef } from "../api";
 import { PickedSelection } from "./SelectionTree";
 
-type Tab = "sasa" | "distance" | "rmsd" | "rmsf" | "hole";
+type Tab = "sasa" | "distance" | "helix" | "rmsd" | "rmsf" | "hole";
 const TABS: { id: Tab; label: string }[] = [
   { id: "sasa", label: "SASA" },
   { id: "distance", label: "Dist" },
+  { id: "helix", label: "Helix" },
   { id: "rmsd", label: "RMSD" },
   { id: "rmsf", label: "RMSF" },
   { id: "hole", label: "HOLE2" },
@@ -33,6 +34,7 @@ export function AnalysisPanel({ structure, structures, picked }: Props) {
         {!structure && <div className="muted">Select a structure to analyse.</div>}
         {structure && tab === "sasa" && <Sasa structure={structure} picked={picked} />}
         {structure && tab === "distance" && <Distance structure={structure} picked={picked} />}
+        {structure && tab === "helix" && <Helix structure={structure} picked={picked} />}
         {structure && tab === "rmsd" && <Rmsd structure={structure} structures={structures} picked={picked} />}
         {structure && tab === "rmsf" && <Rmsf structure={structure} picked={picked} />}
         {structure && tab === "hole" && <Hole structure={structure} picked={picked} />}
@@ -150,6 +152,64 @@ function Distance({ structure, picked }: { structure: StructureRef; picked: Pick
           <span className="k">Distance ({res.mode})</span>
           <span className="v">{res.distance.toFixed(3)} Å</span>
         </div>
+      )}
+    </>
+  );
+}
+
+function Helix({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {
+  const [sele, setSele] = useState("protein");
+  const [axis, setAxis] = useState("z");
+  const [res, setRes] = useState<any>(null);
+  const { busy, error, run } = useRunner();
+  return (
+    <>
+      <FromSelection picked={picked} actions={[{ label: "Use as selection", onClick: () => setSele(picked!.mda) }]} />
+      <label className="field"><span>Helix selection (≥ 9 Cα)</span>
+        <input value={sele} onChange={(e) => setSele(e.target.value)} />
+      </label>
+      <label className="field"><span>Tilt reference axis (the “= 0” viewpoint axis)</span>
+        <select value={axis} onChange={(e) => setAxis(e.target.value)}>
+          <option value="z">Z axis (e.g. membrane normal)</option>
+          <option value="x">X axis</option>
+          <option value="y">Y axis</option>
+        </select>
+      </label>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.helix(structure.id, sele, axis)))}>
+        {busy ? "Fitting helix…" : "Analyse helix geometry"}
+      </button>
+      {error && <div className="error">{error}</div>}
+      {res && (
+        <>
+          <div className="kv" style={{ marginTop: 8 }}>
+            <span className="k">Tilt vs {res.ref_axis.toUpperCase()} axis</span>
+            <span className="v" style={{ color: "var(--accent)" }}>{res.tilt_vs_ref}°</span>
+          </div>
+          <div className="kv"><span className="k">Twist (torsion)</span><span className="v">{res.twist_mean} ± {res.twist_std}°/res</span></div>
+          <div className="kv"><span className="k">Rise per residue</span><span className="v">{res.rise_mean} Å</span></div>
+          <div className="kv"><span className="k">Residues per turn</span><span className="v">{res.residues_per_turn}</span></div>
+          {res.bend_mean != null && <div className="kv"><span className="k">Mean bend</span><span className="v">{res.bend_mean}°</span></div>}
+          <div className="kv"><span className="k">Global axis</span><span className="v">[{res.global_axis.map((x: number) => x.toFixed(2)).join(", ")}]</span></div>
+          <div className="kv"><span className="k">Cα atoms</span><span className="v">{res.n_ca}</span></div>
+          <p className="muted" style={{ marginTop: 6, marginBottom: 2 }}>Tilt against each axis:</p>
+          <div className="row" style={{ gap: 4 }}>
+            {(["x", "y", "z"] as const).map((a) => (
+              <span key={a} className="pill" style={{ flex: 1, textAlign: "center", borderColor: a === res.ref_axis ? "var(--accent-dim)" : undefined, color: a === res.ref_axis ? "var(--accent)" : undefined }}>
+                {a.toUpperCase()}: {res.tilt[a]}°
+              </span>
+            ))}
+          </div>
+          <div className="table-wrap" style={{ marginTop: 8 }}>
+            <table>
+              <thead><tr><th>Residue</th><th className="num">Local twist (°)</th></tr></thead>
+              <tbody>
+                {res.per_window_twist.map((w: any, i: number) => (
+                  <tr key={i}><td>{w.resid}</td><td className="num">{w.twist.toFixed(2)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </>
   );

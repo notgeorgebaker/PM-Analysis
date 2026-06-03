@@ -152,6 +152,75 @@ def distance_matrix(store: StructureStore, sid: str, sel_a: str, sel_b: str,
     }
 
 
+# --- helix geometry ---------------------------------------------------------
+
+_AXES = {"x": [1.0, 0.0, 0.0], "y": [0.0, 1.0, 0.0], "z": [0.0, 0.0, 1.0]}
+
+
+def helix_geometry(store: StructureStore, sid: str, selection: str = "protein",
+                   ref_axis: str = "z") -> dict[str, Any]:
+    """Helix geometry via HELANAL (Bansal local-axis method).
+
+    Reports the per-residue helical twist (torsion), rise and residues-per-turn,
+    the global helix axis, and the tilt of that axis relative to the viewport
+    x/y/z axes — e.g. the tilt vs the membrane normal (z) for a TM helix.
+    """
+    try:
+        from MDAnalysis.analysis import helix_analysis as hel
+    except Exception as exc:  # pragma: no cover
+        raise RuntimeError("MDAnalysis (with helix_analysis) is required.") from exc
+
+    if ref_axis not in _AXES:
+        raise ValueError("ref_axis must be 'x', 'y' or 'z'")
+
+    u = store.get(sid).universe()
+    sel = f"({selection}) and name CA"
+    ca = u.select_atoms(sel)
+    if ca.n_atoms < 9:
+        raise ValueError(
+            f"Helix geometry needs at least 9 Cα atoms (HELANAL); the selection "
+            f"resolved to {ca.n_atoms}. Pick a longer, continuous helix."
+        )
+
+    h = hel.HELANAL(u, select=sel, ref_axis=_AXES[ref_axis]).run()
+    r = h.results
+
+    axis = np.asarray(r.global_axis).reshape(-1)[:3]
+    axis = axis / (np.linalg.norm(axis) or 1.0)
+
+    def tilt(vec) -> float:
+        # helix axis sign is arbitrary, so fold the angle into [0, 90] degrees
+        cos = abs(float(np.dot(axis, vec)))
+        return round(float(np.degrees(np.arccos(np.clip(cos, -1.0, 1.0)))), 2)
+
+    twists = np.asarray(r.local_twists).reshape(-1)
+    heights = np.asarray(r.local_heights).reshape(-1)
+    nres = np.asarray(r.local_nres_per_turn).reshape(-1)
+    bends = np.asarray(r.local_bends).reshape(-1)
+    resids = [int(a.resid) for a in ca.atoms]
+
+    # Each local twist sits between consecutive Cα windows; label by the residue.
+    per_window = [
+        {"resid": resids[min(i + 1, len(resids) - 1)], "twist": round(float(t), 2)}
+        for i, t in enumerate(twists)
+    ]
+
+    return {
+        "selection": selection,
+        "n_ca": int(ca.n_atoms),
+        "ref_axis": ref_axis,
+        "global_axis": [round(float(x), 4) for x in axis],
+        "tilt": {"x": tilt(_AXES["x"]), "y": tilt(_AXES["y"]), "z": tilt(_AXES["z"])},
+        "tilt_vs_ref": tilt(_AXES[ref_axis]),
+        "twist_mean": round(float(np.mean(twists)), 2),
+        "twist_std": round(float(np.std(twists)), 2),
+        "rise_mean": round(float(np.mean(heights)), 3),
+        "residues_per_turn": round(float(np.mean(nres)), 3),
+        "bend_mean": round(float(np.mean(bends)), 2) if bends.size else None,
+        "per_window_twist": per_window,
+    }
+
+
 # --- RMSD / RMSF ------------------------------------------------------------
 
 

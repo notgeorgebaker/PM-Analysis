@@ -158,4 +158,9 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ selection }),
     }),
+  helix: (id: string, selection: string, ref_axis: string) =>
+    req<any>(`/structures/${id}/analysis/helix`, {
+      method: "POST",
+      body: JSON.stringify({ selection, ref_axis }),
+    }),
 };
