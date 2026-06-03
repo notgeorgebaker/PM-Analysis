@@ -1,0 +1,158 @@
+/* PM-Analysis — Lightroom-inspired dark theme.
+   Neutral graphite panels, a single accent, generous spacing, the 3D viewport
+   as the bright centre of attention. */
+
+:root {
+  --bg: #16181d;
+  --panel: #1e2127;
+  --panel-2: #23272f;
+  --panel-3: #2a2f38;
+  --border: #33384280;
+  --text: #e6e8ec;
+  --text-dim: #9aa1ad;
+  --text-faint: #6b7280;
+  --accent: #4f9dff;
+  --accent-dim: #2b6fd1;
+  --good: #46c08a;
+  --warn: #e0a64b;
+  --bad: #e0635b;
+  --radius: 7px;
+  --row: 30px;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ---- App shell: left | viewport | right ---------------------------------- */
+
+.app {
+  display: grid;
+  grid-template-columns: 264px 1fr 320px;
+  grid-template-rows: 44px 1fr;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "left   viewport right";
+  height: 100%;
+}
+
+.topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.topbar .brand { font-weight: 600; letter-spacing: 0.2px; }
+.topbar .brand span { color: var(--accent); }
+.topbar .tag { color: var(--text-faint); font-size: 11px; }
+.topbar .spacer { flex: 1; }
+.topbar .status { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+.dot.ok { background: var(--good); }
+.dot.bad { background: var(--bad); }
+
+.sidebar { background: var(--panel); overflow-y: auto; }
+.sidebar.left { grid-area: left; border-right: 1px solid var(--border); }
+.sidebar.right { grid-area: right; border-left: 1px solid var(--border); }
+
+.viewport { grid-area: viewport; position: relative; background: radial-gradient(circle at 50% 40%, #1b1f27, #0f1115); }
+.viewport .ngl-host { position: absolute; inset: 0; }
+.viewport .hint {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text-faint); font-size: 13px; pointer-events: none; text-align: center;
+}
+
+/* ---- Panels & sections --------------------------------------------------- */
+
+.section { border-bottom: 1px solid var(--border); }
+.section > h3 {
+  margin: 0; padding: 10px 14px 8px; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-dim);
+}
+.section-body { padding: 4px 12px 14px; }
+
+label.field { display: block; margin: 8px 0; }
+label.field > span { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 3px; }
+
+input, select, textarea {
+  width: 100%; background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; font: inherit; font-size: 12px;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-dim); }
+textarea { resize: vertical; min-height: 32px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+button {
+  background: var(--panel-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 5px; padding: 6px 10px; font: inherit; font-size: 12px; cursor: pointer;
+}
+button:hover { background: #313742; }
+button:active { transform: translateY(1px); }
+button.primary { background: var(--accent-dim); border-color: var(--accent-dim); color: #fff; }
+button.primary:hover { background: var(--accent); }
+button.ghost { background: transparent; }
+button:disabled { opacity: 0.45; cursor: default; }
+.row { display: flex; gap: 6px; align-items: center; }
+.row > * { flex: 1; }
+.row.tight > button { flex: 0 0 auto; }
+
+/* ---- Library list -------------------------------------------------------- */
+
+.lib-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer;
+  border-radius: 5px; margin: 2px 0;
+}
+.lib-item:hover { background: var(--panel-2); }
+.lib-item.active { background: #2b3340; }
+.lib-item .name { flex: 1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-item .src { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--panel-3); color: var(--text-dim); text-transform: uppercase; }
+
+/* ---- Representation stack (the "Lightroom layers") ----------------------- */
+
+.rep {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius);
+  margin: 7px 0; padding: 8px 9px;
+}
+.rep .rep-head { display: flex; align-items: center; gap: 7px; }
+.rep .swatch { width: 13px; height: 13px; border-radius: 3px; border: 1px solid #0006; flex: 0 0 auto; }
+.rep .rep-type { font-weight: 600; font-size: 12px; flex: 1; text-transform: capitalize; }
+.rep .icon-btn { flex: 0 0 auto; background: transparent; border: none; padding: 2px 5px; color: var(--text-dim); }
+.rep .icon-btn:hover { color: var(--text); }
+.rep .rep-body { margin-top: 7px; display: grid; gap: 6px; }
+.rep.hidden { opacity: 0.5; }
+.muted { color: var(--text-faint); font-size: 11px; }
+
+/* ---- Tables / results ---------------------------------------------------- */
+
+.kv { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; border-bottom: 1px dotted var(--border); }
+.kv .k { color: var(--text-dim); }
+.kv .v { font-variant-numeric: tabular-nums; }
+
+.table-wrap { max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 5px; }
+table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+th { position: sticky; top: 0; background: var(--panel-2); color: var(--text-dim); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.tabs { display: flex; gap: 2px; padding: 6px 10px 0; }
+.tabs button { flex: 1; border-radius: 5px 5px 0 0; border-bottom: none; font-size: 11px; }
+.tabs button.active { background: var(--panel-2); color: var(--text); }
+
+.error { color: var(--bad); font-size: 11.5px; margin-top: 6px; white-space: pre-wrap; }
+.note { color: var(--warn); font-size: 11.5px; margin-top: 6px; }
+.busy { color: var(--accent); font-size: 11.5px; }
+.pill { display:inline-block; font-size:10px; padding:1px 6px; border-radius:9px; background:var(--panel-3); color:var(--text-dim); }

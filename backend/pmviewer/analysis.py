@@ -1,0 +1,223 @@
+"""Structural analysis: SASA, inter-residue distances, RMSD and RMSF.
+
+Everything here operates on the on-disk structure file and/or its MDAnalysis
+``Universe``. Functions raise ``RuntimeError`` with an actionable message when a
+required dependency is missing, and ``ValueError`` for bad inputs/selections.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+
+from .structure import Structure, StructureStore
+
+# Reference-point modes for "distance between residues".
+DISTANCE_MODES = {"ca", "com", "cog"}  # alpha-carbon, centre of mass, centre of geometry
+
+
+# --- SASA -------------------------------------------------------------------
+
+
+def sasa(store: StructureStore, sid: str, selection: str | None = None,
+         probe_radius: float = 1.4) -> dict[str, Any]:
+    try:
+        import freesasa
+    except Exception as exc:  # pragma: no cover
+        raise RuntimeError(
+            "freesasa is not installed. Run: pip install freesasa"
+        ) from exc
+
+    struct = store.get(sid)
+    if struct.fmt != "pdb":
+        raise ValueError("SASA currently requires a PDB-format structure.")
+
+    freesasa.setVerbosity(freesasa.silent)
+    params = freesasa.Parameters({"probe-radius": probe_radius})
+    fs_struct = freesasa.Structure(struct.path)
+    result = freesasa.calc(fs_struct, params)
+
+    # Optionally restrict the reported per-residue table to a selection.
+    wanted: set[tuple[str, int]] | None = None
+    if selection:
+        atoms = struct.universe().select_atoms(selection)
+        wanted = {(str(getattr(r, "segid", "")), int(r.resid)) for r in atoms.residues}
+
+    per_residue = []
+    selected_total = 0.0
+    for chain, residues in result.residueAreas().items():
+        for resnum, area in residues.items():
+            key = (str(chain), int(resnum))
+            entry = {
+                "chain": str(chain),
+                "resid": int(resnum),
+                "resname": str(area.residueType),
+                "total": float(area.total),
+                "polar": float(area.polar),
+                "apolar": float(area.apolar),
+                "relative_total": (float(area.relativeTotal)
+                                   if area.hasRelativeAreas else None),
+            }
+            if wanted is None or key in wanted or ("", int(resnum)) in wanted:
+                per_residue.append(entry)
+                selected_total += float(area.total)
+
+    return {
+        "probe_radius": probe_radius,
+        "total_sasa": float(result.totalArea()),
+        "selected_sasa": selected_total if selection else float(result.totalArea()),
+        "n_residues": len(per_residue),
+        "per_residue": per_residue,
+    }
+
+
+# --- distances --------------------------------------------------------------
+
+
+def _reference_points(atomgroup, mode: str) -> tuple[np.ndarray, list[dict]]:
+    """Per-residue reference coordinate + label list for the given mode."""
+    coords = []
+    labels = []
+    for res in atomgroup.residues:
+        if mode == "ca":
+            ca = res.atoms.select_atoms("name CA")
+            if ca.n_atoms == 0:
+                continue
+            pt = ca.positions[0]
+        elif mode == "com":
+            pt = res.atoms.center_of_mass()
+        else:  # cog
+            pt = res.atoms.center_of_geometry()
+        coords.append(pt)
+        labels.append(
+            {"resname": str(res.resname), "resid": int(res.resid),
+             "segid": str(getattr(res, "segid", ""))}
+        )
+    return np.asarray(coords, dtype=float), labels
+
+
+def distance(store: StructureStore, sid: str, sel_a: str, sel_b: str,
+             mode: str = "ca") -> dict[str, Any]:
+    """Single distance between the reference points of two selections."""
+    if mode not in DISTANCE_MODES:
+        raise ValueError(f"mode must be one of {sorted(DISTANCE_MODES)}")
+    u = store.get(sid).universe()
+    ga, gb = u.select_atoms(sel_a), u.select_atoms(sel_b)
+    if ga.n_atoms == 0 or gb.n_atoms == 0:
+        raise ValueError("One of the selections matched no atoms.")
+
+    if mode == "ca":
+        pa = ga.select_atoms("name CA").center_of_geometry() if ga.select_atoms("name CA").n_atoms else ga.center_of_geometry()
+        pb = gb.select_atoms("name CA").center_of_geometry() if gb.select_atoms("name CA").n_atoms else gb.center_of_geometry()
+    elif mode == "com":
+        pa, pb = ga.center_of_mass(), gb.center_of_mass()
+    else:
+        pa, pb = ga.center_of_geometry(), gb.center_of_geometry()
+
+    return {
+        "mode": mode,
+        "distance": float(np.linalg.norm(np.asarray(pa) - np.asarray(pb))),
+        "point_a": [float(x) for x in pa],
+        "point_b": [float(x) for x in pb],
+    }
+
+
+def distance_matrix(store: StructureStore, sid: str, sel_a: str, sel_b: str,
+                    mode: str = "ca", max_dim: int = 400) -> dict[str, Any]:
+    """Per-residue inter-residue distance matrix (like the static analogue of
+    your time-series inter-residue CSVs)."""
+    if mode not in DISTANCE_MODES:
+        raise ValueError(f"mode must be one of {sorted(DISTANCE_MODES)}")
+    u = store.get(sid).universe()
+    ca, la = _reference_points(u.select_atoms(sel_a), mode)
+    cb, lb = _reference_points(u.select_atoms(sel_b), mode)
+    if len(la) == 0 or len(lb) == 0:
+        raise ValueError("A selection produced no residues with the chosen reference point.")
+    if len(la) > max_dim or len(lb) > max_dim:
+        raise ValueError(
+            f"Matrix too large ({len(la)}x{len(lb)}); narrow the selection "
+            f"(limit {max_dim} residues per axis)."
+        )
+    # Euclidean pairwise distances.
+    diff = ca[:, None, :] - cb[None, :, :]
+    mat = np.sqrt((diff ** 2).sum(axis=-1))
+    return {
+        "mode": mode,
+        "rows": la,
+        "cols": lb,
+        "matrix": mat.round(3).tolist(),
+        "min": float(mat.min()),
+        "max": float(mat.max()),
+    }
+
+
+# --- RMSD / RMSF ------------------------------------------------------------
+
+
+def rmsd_between(store: StructureStore, sid_ref: str, sid_mobile: str,
+                 selection: str = "name CA") -> dict[str, Any]:
+    """RMSD between two loaded structures after optimal superposition."""
+    try:
+        from MDAnalysis.analysis import align
+        from MDAnalysis.analysis.rms import rmsd as _rmsd
+    except Exception as exc:  # pragma: no cover
+        raise RuntimeError("MDAnalysis is required for RMSD.") from exc
+
+    u_ref = store.get(sid_ref).universe()
+    u_mob = store.get(sid_mobile).universe()
+    a = u_ref.select_atoms(selection)
+    b = u_mob.select_atoms(selection)
+    if a.n_atoms == 0 or b.n_atoms == 0:
+        raise ValueError("Selection matched no atoms in one of the structures.")
+    if a.n_atoms != b.n_atoms:
+        raise ValueError(
+            f"Selections differ in size ({a.n_atoms} vs {b.n_atoms} atoms). "
+            "Use a selection that resolves to the same atoms in both structures."
+        )
+    before = float(_rmsd(a.positions, b.positions, superposition=False))
+    after = float(_rmsd(a.positions, b.positions, superposition=True))
+    return {
+        "selection": selection,
+        "n_atoms": int(a.n_atoms),
+        "rmsd_raw": round(before, 4),
+        "rmsd_superposed": round(after, 4),
+    }
+
+
+def rmsf(store: StructureStore, sid: str, selection: str = "name CA") -> dict[str, Any]:
+    """Per-residue RMSF across the models/frames in the structure.
+
+    For a single-model crystal/AlphaFold structure there is only one frame, so
+    RMSF is zero/undefined — this returns a clear note rather than misleading
+    numbers. Multi-model files (e.g. NMR ensembles) and trajectories work.
+    """
+    try:
+        from MDAnalysis.analysis.rms import RMSF as _RMSF
+        from MDAnalysis.analysis import align
+    except Exception as exc:  # pragma: no cover
+        raise RuntimeError("MDAnalysis is required for RMSF.") from exc
+
+    u = store.get(sid).universe()
+    n_frames = len(u.trajectory)
+    sel = u.select_atoms(selection)
+    if sel.n_atoms == 0:
+        raise ValueError("Selection matched no atoms.")
+    if n_frames < 2:
+        return {
+            "selection": selection,
+            "n_frames": n_frames,
+            "note": "Only one model/frame present — RMSF needs an ensemble "
+                    "or trajectory. Load an NMR multi-model PDB or a trajectory.",
+            "per_residue": [],
+        }
+
+    # Align all frames to the average before computing fluctuations.
+    align.AlignTraj(u, u, select=selection, in_memory=True).run()
+    calc = _RMSF(sel).run()
+    per_residue = [
+        {"resname": str(a.resname), "resid": int(a.resid),
+         "segid": str(getattr(a, "segid", "")), "rmsf": float(v)}
+        for a, v in zip(sel.atoms, calc.results.rmsf)
+    ]
+    return {"selection": selection, "n_frames": n_frames, "per_residue": per_residue}

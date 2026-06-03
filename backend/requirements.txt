@@ -1,0 +1,15 @@
+# PM-Analysis backend — "Lightroom for VMD"
+# Core API
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+httpx>=0.27
+
+# Science stack
+numpy>=1.24
+scipy>=1.10
+MDAnalysis>=2.6        # selections, distances, RMSD/RMSF, HOLE2 wrapper
+freesasa>=2.2          # solvent accessible surface area
+
+# Optional (trajectory phase / extra SASA): mdtraj
+# mdtraj>=1.9

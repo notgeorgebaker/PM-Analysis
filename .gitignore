@@ -1,0 +1,21 @@
+# Node / frontend
+app/node_modules/
+app/dist/
+app/.vite/
+npm-debug.log*
+
+# Python / backend
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Runtime scratch
+/tmp/pm-analysis/
