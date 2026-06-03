@@ -181,6 +181,30 @@ def test_missing_structure_is_404():
     assert client.get("/structures/nope/summary").status_code == 404
 
 
+def test_hardware_detect():
+    hw = client.get("/hardware").json()
+    assert hw["detected"]["cpu"]["logical_cores"] >= 1
+    assert "gpus" in hw["detected"] and "cuda" in hw["detected"]
+    assert hw["config"]["cpu_workers"] >= 1
+
+
+def test_hardware_set_cpu_workers():
+    logical = client.get("/hardware").json()["detected"]["cpu"]["logical_cores"]
+    cfg = client.post("/hardware/config", json={"cpu_workers": 1}).json()
+    assert cfg["cpu_workers"] == 1
+    # over-allocation is clamped to the detected core count
+    cfg = client.post("/hardware/config", json={"cpu_workers": 9999}).json()
+    assert cfg["cpu_workers"] == logical
+
+
+def test_hardware_gpu_request_is_guarded():
+    # asking for a GPU when none/no-CuPy is present must not silently enable it
+    hw = client.get("/hardware").json()
+    cfg = client.post("/hardware/config", json={"use_gpu": True, "gpu_indices": [0]}).json()
+    if not hw["detected"]["cuda"]["available"]:
+        assert cfg["use_gpu"] is False
+
+
 def test_single_structure_has_no_trajectory():
     sid = _load_demo()
     info = client.get(f"/structures/{sid}/trajectory/info").json()

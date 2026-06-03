@@ -11,5 +11,11 @@ scipy>=1.10
 MDAnalysis>=2.6        # selections, distances, RMSD/RMSF, HOLE2 wrapper
 freesasa>=2.2          # solvent accessible surface area
 
-# Optional (trajectory phase / extra SASA): mdtraj
-# mdtraj>=1.9
+# Hardware mapping / compute allocation
+psutil>=5.9            # CPU/memory detection
+threadpoolctl>=3.1     # cap BLAS/OpenMP threads to the chosen core count
+
+# Optional accelerators (auto-detected if present):
+#   cupy-cuda12x       # GPU array maths for large distance/contact kernels
+#   nvidia-ml-py       # richer NVIDIA GPU telemetry (pynvml)
+# Optional (extra SASA / trajectory tooling): mdtraj>=1.9

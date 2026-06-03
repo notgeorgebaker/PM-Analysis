@@ -30,6 +30,15 @@ kind of work you'd otherwise do in VMD.
 - **Image export** — an **Export** menu (top-right) renders the current view to
   **PNG, JPEG, TIFF or SVG** at 1–4× resolution and saves it through a native
   host file dialog (with a browser-download fallback).
+- **Hardware mapping & acceleration** — a **Hardware** menu scans the host and
+  reports the CPU (model, logical/physical cores), memory, the WebGL GPU already
+  rendering the viewport, and any **NVIDIA GPUs** (via `nvidia-smi`/pynvml). You
+  choose *how many CPU cores* and *which GPUs* Meon Spring uses; the choice is
+  applied for real — CPU cores cap the numpy/BLAS thread pools that drive the
+  analyses, and allocated GPUs offload large distance/contact kernels to **CuPy**
+  when it's installed (transparent CPU fallback otherwise). Over-allocation is
+  clamped to detected hardware, and GPU mode only engages when CUDA is actually
+  present.
 - **Clean representations** — cartoon, surface, ball-and-stick, licorice,
   spacefill, ribbon, rope and more, each its own non-destructive layer with its
   own selection, colour scheme and opacity. Stack and tweak them live.
@@ -116,6 +125,22 @@ To build the renderer bundle for packaging:
 npm run build             # tsc --noEmit + vite build -> app/dist
 ```
 
+### Optional: GPU acceleration (CUDA)
+
+CPU thread-capping and host/GPU **detection** work out of the box (NVIDIA cards
+are read via `nvidia-smi`). To let allocated GPUs actually run the array maths,
+install CuPy for your CUDA version, and optionally `nvidia-ml-py` for richer
+telemetry:
+
+```bash
+pip install cupy-cuda12x nvidia-ml-py    # match your CUDA toolkit (e.g. 11x/12x)
+```
+
+On a multi-GPU box (e.g. 2× NVIDIA A4000) both cards appear in the Hardware
+menu; tick the ones to allocate. `CUDA_VISIBLE_DEVICES` is set accordingly and
+GPU-capable kernels (currently the inter-residue distance matrix) run on CuPy;
+everything else uses the thread-capped CPU path.
+
 ### Optional: HOLE2
 
 Pore analysis drives the external `hole` binary. Install HOLE2 (free for
@@ -155,6 +180,7 @@ backend/
     selection.py       human-readable molecule-type selection tree
     analysis.py        SASA, distances, helix, RMSD/RMSF, Rg, DSSP, Ramachandran, contacts
     hbonds.py          hydrogen bonds + survival times
+    hardware.py        host CPU/GPU detection + compute allocation
     fetch.py           RCSB + AlphaFold fetching
     hole.py            HOLE2 wrapper
   samples/             bundled offline demo structure + multi-model ensemble

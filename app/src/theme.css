@@ -162,6 +162,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 12px; box-shadow: 0 10px 30px #0008;
 }
+.hardware-popover { width: 300px; max-height: 78vh; overflow-y: auto; }
+.hw-head { font-size: 11px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; }
+.gpu-row { display: flex; align-items: center; gap: 7px; padding: 4px 0; font-size: 12px; }
+.gpu-row input { width: auto; }
+.gpu-row .gpu-name { flex: 1; }
 
 /* ---- Trajectory transport + readout (viewport overlays) ------------------ */
 

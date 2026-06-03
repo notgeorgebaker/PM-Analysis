@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from pmviewer import analysis, fetch, hbonds, hole, selection
+from pmviewer import analysis, fetch, hardware, hbonds, hole, selection
 from pmviewer.structure import StructureStore
 
 WORKDIR = os.environ.get("PMA_WORKDIR", os.path.join(tempfile.gettempdir(), "pm-analysis"))
@@ -33,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 store = StructureStore(WORKDIR)
+hardware.CONFIG.apply()  # install default CPU thread limits at startup
 
 
 # --- request models ---------------------------------------------------------
@@ -91,6 +92,12 @@ class HoleBody(BaseModel):
     cvect: list[float] | None = None
 
 
+class ComputeConfigBody(BaseModel):
+    cpu_workers: int | None = None
+    gpu_indices: list[int] | None = None
+    use_gpu: bool | None = None
+
+
 # --- error helper -----------------------------------------------------------
 
 
@@ -111,6 +118,19 @@ def _guard(fn, *args, **kwargs):
 @app.get("/health")
 def health():
     return {"status": "ok", "version": app.version}
+
+
+# --- hardware / compute allocation ------------------------------------------
+
+
+@app.get("/hardware")
+def get_hardware():
+    return {"detected": hardware.detect(), "config": hardware.CONFIG.to_dict()}
+
+
+@app.post("/hardware/config")
+def set_hardware(body: ComputeConfigBody):
+    return _guard(hardware.set_config, body.cpu_workers, body.gpu_indices, body.use_gpu)
 
 
 @app.get("/structures")

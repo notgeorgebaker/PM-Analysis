@@ -8,6 +8,7 @@ import { SelectionTree, PickedSelection } from "./components/SelectionTree";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { AnalysisPanel } from "./components/AnalysisPanel";
 import { ExportMenu } from "./components/ExportMenu";
+import { HardwarePanel } from "./components/HardwarePanel";
 
 interface TrajInfo {
   nFrames: number;
@@ -135,6 +136,7 @@ export default function App() {
         <div className="brand">Meon<span> </span>Spring</div>
         <div className="tag">a Lightroom take on VMD</div>
         <div className="spacer" />
+        <HardwarePanel />
         <ExportMenu getViewer={() => viewerRef.current} disabled={!active} />
         <div className="status">
           <span className={`dot ${healthy === null ? "" : healthy ? "ok" : "bad"}`} />

@@ -162,16 +162,31 @@ def distance_matrix(store: StructureStore, sid: str, sel_a: str, sel_b: str,
             f"Matrix too large ({len(la)}x{len(lb)}); narrow the selection "
             f"(limit {max_dim} residues per axis)."
         )
-    # Euclidean pairwise distances.
-    diff = ca[:, None, :] - cb[None, :, :]
-    mat = np.sqrt((diff ** 2).sum(axis=-1))
+    # Euclidean pairwise distances — routed to the GPU (CuPy) when one is
+    # allocated, otherwise computed on the (thread-capped) CPU.
+    from . import hardware
+
+    computed_on = "cpu"
+    xp = np
+    if hardware.gpu_active():
+        try:
+            import cupy as xp  # type: ignore
+            computed_on = "gpu"
+        except Exception:
+            xp = np
+    a = xp.asarray(ca)
+    b = xp.asarray(cb)
+    diff = a[:, None, :] - b[None, :, :]
+    mat = xp.sqrt((diff ** 2).sum(axis=-1))
+    mat_np = np.asarray(xp.asnumpy(mat)) if computed_on == "gpu" else mat
     return {
         "mode": mode,
         "rows": la,
         "cols": lb,
-        "matrix": mat.round(3).tolist(),
-        "min": float(mat.min()),
-        "max": float(mat.max()),
+        "matrix": np.round(mat_np, 3).tolist(),
+        "min": float(mat_np.min()),
+        "max": float(mat_np.max()),
+        "computed_on": computed_on,
     }
 
 

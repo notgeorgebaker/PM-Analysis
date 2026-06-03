@@ -88,6 +88,32 @@ export interface SelectionTree {
   categories: TreeCategory[];
 }
 
+export interface GpuInfo {
+  index: number;
+  name: string;
+  memory_mb: number;
+  memory_used_mb?: number;
+  utilization_pct?: number;
+}
+
+export interface HardwareReport {
+  detected: {
+    cpu: { model: string; logical_cores: number; physical_cores: number | null };
+    memory_gb: number | null;
+    platform: string;
+    gpus: GpuInfo[];
+    cuda: { available: boolean; cupy: boolean; torch: boolean; driver: string | null };
+    recommended: { cpu_workers: number; gpu_indices: number[] };
+  };
+  config: ComputeConfig;
+}
+
+export interface ComputeConfig {
+  cpu_workers: number;
+  gpu_indices: number[];
+  use_gpu: boolean;
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -105,6 +131,10 @@ export const api = {
 
   health: () => req<{ status: string }>("/health"),
   list: () => req<StructureRef[]>("/structures"),
+
+  hardware: () => req<HardwareReport>("/hardware"),
+  setHardware: (cfg: { cpu_workers?: number; gpu_indices?: number[]; use_gpu?: boolean }) =>
+    req<ComputeConfig>("/hardware/config", { method: "POST", body: JSON.stringify(cfg) }),
 
   importFile: async (file: File): Promise<StructureRef> => {
     const form = new FormData();
