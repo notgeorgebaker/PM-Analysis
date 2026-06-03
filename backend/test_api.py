@@ -225,6 +225,26 @@ def test_frame_aware_analysis():
     assert rg0 != rg5  # different frames -> different geometry
 
 
+def test_timeseries_metrics():
+    sid = client.post("/structures/sample/demo_ensemble.pdb").json()["id"]
+    for body in (
+        {"metric": "rg", "selection": "protein"},
+        {"metric": "rmsd", "selection": "name CA"},
+        {"metric": "n_hbonds", "selection": "protein"},
+        {"metric": "distance", "selection": "resid 1", "sel_b": "resid 15"},
+    ):
+        d = client.post(f"/structures/{sid}/timeseries", json=body).json()
+        assert d["n_frames"] == 8
+        assert len(d["values"]) == 8 and len(d["times_ns"]) == 8
+        assert d["ylabel"] and d["xlabel"] == "Time (ns)"
+
+
+def test_timeseries_needs_trajectory():
+    sid = _load_demo()
+    r = client.post(f"/structures/{sid}/timeseries", json={"metric": "rg"})
+    assert r.status_code == 400
+
+
 def test_attach_dcd_trajectory():
     import os as _os
     sid = client.post("/structures/sample/demo_helix.pdb").json()["id"]

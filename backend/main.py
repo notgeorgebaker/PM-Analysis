@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from pmviewer import analysis, fetch, hardware, hbonds, hole, selection
+from pmviewer import analysis, fetch, hardware, hbonds, hole, selection, timeseries
 from pmviewer.structure import StructureStore
 
 WORKDIR = os.environ.get("PMA_WORKDIR", os.path.join(tempfile.gettempdir(), "pm-analysis"))
@@ -96,6 +96,14 @@ class ComputeConfigBody(BaseModel):
     cpu_workers: int | None = None
     gpu_indices: list[int] | None = None
     use_gpu: bool | None = None
+
+
+class TimeseriesBody(BaseModel):
+    metric: str
+    selection: str = "protein"
+    sel_b: str | None = None
+    mode: str = "ca"
+    ref_axis: str = "z"
 
 
 # --- error helper -----------------------------------------------------------
@@ -308,6 +316,12 @@ def analysis_hbonds(sid: str, body: HBondBody):
 @app.post("/structures/{sid}/analysis/hole")
 def analysis_hole(sid: str, body: HoleBody):
     return _guard(hole.hole_profile, store, sid, body.selection, body.cpoint, body.cvect)
+
+
+@app.post("/structures/{sid}/timeseries")
+def analysis_timeseries(sid: str, body: TimeseriesBody):
+    return _guard(timeseries.timeseries, store, sid, body.metric, body.selection,
+                  body.sel_b, body.mode, body.ref_axis)
 
 
 if __name__ == "__main__":

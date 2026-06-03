@@ -217,4 +217,6 @@ export const api = {
     req<any>(`/structures/${id}/analysis/contacts`, { method: "POST", body: JSON.stringify({ selection, cutoff, frame: frame ?? null }) }),
   hbonds: (id: string, selection: string) =>
     req<any>(`/structures/${id}/analysis/hbonds`, { method: "POST", body: JSON.stringify({ selection }) }),
+  timeseries: (id: string, body: { metric: string; selection?: string; sel_b?: string | null; mode?: string; ref_axis?: string }) =>
+    req<any>(`/structures/${id}/timeseries`, { method: "POST", body: JSON.stringify(body) }),
 };

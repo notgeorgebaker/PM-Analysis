@@ -113,6 +113,11 @@ function encodeTiffRGB(img: ImageData): Uint8Array {
   return new Uint8Array(dv.buffer);
 }
 
+// Save a text file (e.g. CSV of a plot's data) via the same host dialog/fallback.
+export async function saveTextFile(name: string, text: string, label = { name: "CSV", extensions: ["csv"] }) {
+  return saveBytes(name, new TextEncoder().encode(text), label);
+}
+
 async function saveBytes(
   name: string,
   bytes: Uint8Array,

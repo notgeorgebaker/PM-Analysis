@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { api, StructureRef } from "../api";
 import { PickedSelection } from "./SelectionTree";
+import { LinePlot } from "./LinePlot";
+import { saveTextFile } from "../exporter";
 
 type Tab =
-  | "dssp" | "gyration" | "rama" | "hbonds" | "contacts"
+  | "timeseries" | "dssp" | "gyration" | "rama" | "hbonds" | "contacts"
   | "sasa" | "distance" | "helix" | "rmsd" | "rmsf" | "hole";
 
 const ANALYSES: { id: Tab; label: string }[] = [
+  { id: "timeseries", label: "Time series & plots (trajectory)" },
   { id: "dssp", label: "Secondary structure (DSSP)" },
   { id: "gyration", label: "Radius of gyration" },
   { id: "rama", label: "Ramachandran (φ/ψ)" },
@@ -46,6 +49,7 @@ export function AnalysisPanel({ structure, structures, picked, frame, nFrames }:
           <div className="frame-tag">Analysing frame {(frame ?? 0) + 1} / {nFrames}</div>
         )}
         {!structure && <div className="muted">Select a structure to analyse.</div>}
+        {structure && tab === "timeseries" && <TimeSeries structure={structure} picked={picked} nFrames={nFrames} />}
         {structure && tab === "dssp" && <Dssp structure={structure} picked={picked} frame={frame} />}
         {structure && tab === "gyration" && <Gyration structure={structure} picked={picked} frame={frame} />}
         {structure && tab === "rama" && <Rama structure={structure} picked={picked} frame={frame} />}
@@ -107,6 +111,112 @@ const useSel = (picked: PickedSelection | null, set: (s: string) => void) =>
   [{ label: "Use as selection", onClick: () => set(picked!.mda) }];
 
 const SS_COLOR: Record<string, string> = { H: "#4f9dff", E: "#e0a64b", "-": "#6b7280" };
+
+const TS_METRICS = [
+  { id: "rg", label: "Radius of gyration" },
+  { id: "rmsd", label: "RMSD (vs frame 1)" },
+  { id: "distance", label: "Inter-residue distance" },
+  { id: "n_hbonds", label: "Hydrogen-bond count" },
+  { id: "helix_tilt", label: "Helix tilt" },
+  { id: "helix_twist", label: "Helix twist" },
+  { id: "sasa_total", label: "Total SASA" },
+];
+
+function TimeSeries({ structure, picked, nFrames }: SP & { nFrames: number }) {
+  const [metric, setMetric] = useState("rg");
+  const [sele, setSele] = useState("protein");
+  const [selB, setSelB] = useState("resid 15");
+  const [mode, setMode] = useState("ca");
+  const [axis, setAxis] = useState("z");
+  const [res, setRes] = useState<any>(null);
+  const [title, setTitle] = useState("");
+  const [xlabel, setXLabel] = useState("Time (ns)");
+  const [ylabel, setYLabel] = useState("");
+  const [useNs, setUseNs] = useState(true);
+  const { busy, error, run } = useRunner();
+
+  if (nFrames <= 1) {
+    return <div className="note">Time-series plots need a trajectory or multi-model ensemble. Load one (e.g. “Demo trajectory”) or attach a DCD.</div>;
+  }
+
+  const compute = () =>
+    run(async () => {
+      const r = await api.timeseries(structure.id, {
+        metric, selection: sele, sel_b: metric === "distance" ? selB : null, mode, ref_axis: axis,
+      });
+      setRes(r);
+      setTitle(`${TS_METRICS.find((m) => m.id === metric)?.label} vs time`);
+      setYLabel(r.ylabel);
+      setXLabel(useNs ? "Time (ns)" : "Frame");
+    });
+
+  const xdata = res ? (useNs ? res.times_ns : res.frames) : [];
+
+  function exportCsv() {
+    if (!res) return;
+    const rows = [`# ${title}`, `${xlabel},${ylabel}`];
+    for (let i = 0; i < res.values.length; i++) rows.push(`${xdata[i]},${res.values[i]}`);
+    saveTextFile(`${(title || "timeseries").replace(/\s+/g, "_")}.csv`, rows.join("\n"));
+  }
+
+  return (
+    <>
+      <FromSelection picked={picked} actions={[
+        { label: metric === "distance" ? "Set A" : "Use as selection", onClick: () => setSele(picked!.mda) },
+        ...(metric === "distance" ? [{ label: "Set B", onClick: () => setSelB(picked!.mda) }] : []),
+      ]} />
+      <label className="field"><span>Metric</span>
+        <select value={metric} onChange={(e) => setMetric(e.target.value)}>
+          {TS_METRICS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+        </select>
+      </label>
+      <label className="field"><span>{metric === "distance" ? "Selection A" : "Selection"}</span>
+        <input value={sele} onChange={(e) => setSele(e.target.value)} />
+      </label>
+      {metric === "distance" && (
+        <>
+          <label className="field"><span>Selection B</span><input value={selB} onChange={(e) => setSelB(e.target.value)} /></label>
+          <label className="field"><span>Reference point</span>
+            <select value={mode} onChange={(e) => setMode(e.target.value)}>
+              <option value="ca">Cα</option><option value="com">Centre of mass</option><option value="cog">Centre of geometry</option>
+            </select>
+          </label>
+        </>
+      )}
+      {(metric === "helix_tilt" || metric === "helix_twist") && (
+        <label className="field"><span>Reference axis</span>
+          <select value={axis} onChange={(e) => setAxis(e.target.value)}>
+            <option value="z">Z</option><option value="x">X</option><option value="y">Y</option>
+          </select>
+        </label>
+      )}
+      <label className="field" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <input type="checkbox" style={{ width: "auto" }} checked={useNs} onChange={(e) => setUseNs(e.target.checked)} />
+        <span style={{ margin: 0 }}>x-axis in nanoseconds (else frame index)</span>
+      </label>
+      <button className="primary" disabled={busy} onClick={compute}>
+        {busy ? "Computing…" : "Compute & plot"}
+      </button>
+      {error && <div className="error">{error}</div>}
+      {res && (
+        <>
+          <LinePlot
+            x={xdata}
+            y={res.values}
+            title={title}
+            xlabel={xlabel}
+            ylabel={ylabel}
+            onTitle={setTitle}
+            onXLabel={setXLabel}
+            onYLabel={setYLabel}
+          />
+          <p className="muted" style={{ marginTop: 4 }}>Double-click the title or an axis label to rename it.</p>
+          <button className="ghost" style={{ width: "100%", marginTop: 4 }} onClick={exportCsv}>Export plot data (CSV)</button>
+        </>
+      )}
+    </>
+  );
+}
 
 function Dssp({ structure, picked, frame }: FP) {
   const [sele, setSele] = useState("protein");

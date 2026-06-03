@@ -27,6 +27,11 @@ kind of work you'd otherwise do in VMD.
   frame dropdown and a scrubber; a frame + **ns** readout sits bottom-right. The
   current frame drives both the **view and the analyses** — every per-residue
   analysis is computed on the frame you're looking at.
+- **Time-series plots** — over a trajectory, plot any scalar metric vs time:
+  Rg, RMSD, inter-residue distance, H-bond count, helix tilt/twist or total SASA.
+  The plot's **title and x/y axis labels are editable in-place** (double-click and
+  type), the x-axis toggles between nanoseconds and frame index, and the data
+  exports to **CSV**.
 - **Image export** — an **Export** menu (top-right) renders the current view to
   **PNG, JPEG, TIFF or SVG** at 1–4× resolution and saves it through a native
   host file dialog (with a browser-download fallback).
@@ -161,9 +166,8 @@ your existing notebook selections almost verbatim.
 
 ## Roadmap (next passes)
 
-- **Time-series analysis**: now that frames drive each analysis, plot any
-  per-frame metric across the whole trajectory (matching
-  `TM1_…_Inter_Residue_Distances.csv`) and export to CSV.
+- Multi-series plots (overlay several traces), more chart types, and richer
+  styling controls beyond the editable title/axis labels.
 - In-viewport **measurement tools** (click-to-measure distances/angles) and
   colour-by-analysis (paint SASA, RMSF or secondary structure onto the structure).
 - DCD/XTC **viewport playback** is best-effort via NGL's client-side trajectory

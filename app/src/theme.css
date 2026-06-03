@@ -193,6 +193,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .frame-readout .fr-frame { font-size: 12px; font-weight: 600; }
 .frame-readout .fr-time { font-size: 11px; color: var(--accent); }
 
+/* ---- Plots (editable title / axis labels) -------------------------------- */
+
+.plot { margin-top: 10px; }
+.plot-title { display: block; text-align: center; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.plot-body { display: flex; align-items: stretch; gap: 2px; }
+.plot-ylabel { display: flex; align-items: center; }
+.plot-ylabel .editable { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; color: var(--text-dim); }
+.plot-svg { background: var(--panel-2); border-radius: 5px; }
+.plot-xlabel { display: block; text-align: center; font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+.plot-tick { fill: var(--text-faint); font-size: 9px; }
+.editable { cursor: text; border-bottom: 1px dashed transparent; padding: 0 2px; }
+.editable:hover { border-bottom-color: var(--accent-dim); }
+.editable-input { font: inherit; padding: 1px 4px; width: auto; min-width: 70px; }
+
 .frame-tag {
   display: inline-block; font-size: 11px; color: var(--accent);
   background: #233040; border: 1px solid var(--accent-dim); border-radius: 5px;
