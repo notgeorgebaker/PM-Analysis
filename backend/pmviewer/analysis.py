@@ -153,7 +153,6 @@ def distance_matrix(store: StructureStore, sid: str, sel_a: str, sel_b: str,
 
 
 # --- helix geometry ---------------------------------------------------------
-
 _AXES = {"x": [1.0, 0.0, 0.0], "y": [0.0, 1.0, 0.0], "z": [0.0, 0.0, 1.0]}
 
 
@@ -290,3 +289,179 @@ def rmsf(store: StructureStore, sid: str, selection: str = "name CA") -> dict[st
         for a, v in zip(sel.atoms, calc.results.rmsf)
     ]
     return {"selection": selection, "n_frames": n_frames, "per_residue": per_residue}
+
+
+# --- radius of gyration -----------------------------------------------------
+
+
+def radius_of_gyration(store: StructureStore, sid: str,
+                       selection: str = "protein") -> dict[str, Any]:
+    """Overall and per-chain radius of gyration (compactness)."""
+    u = store.get(sid).universe()
+    g = u.select_atoms(selection)
+    if g.n_atoms == 0:
+        raise ValueError("Selection matched no atoms.")
+    per_chain = []
+    seg_attr = "segids" if hasattr(g, "segids") else None
+    if seg_attr:
+        for seg in sorted(set(g.segids)):
+            sub = g.select_atoms(f"segid {seg}")
+            if sub.n_atoms:
+                per_chain.append({"chain": str(seg), "rg": round(float(sub.radius_of_gyration()), 3),
+                                  "n_atoms": int(sub.n_atoms)})
+    return {
+        "selection": selection,
+        "rg": round(float(g.radius_of_gyration()), 3),
+        "n_atoms": int(g.n_atoms),
+        "per_chain": per_chain,
+    }
+
+
+# --- secondary structure (DSSP) ---------------------------------------------
+
+_SS_NAMES = {"H": "Helix", "E": "Strand", "-": "Loop/coil"}
+
+
+def secondary_structure(store: StructureStore, sid: str,
+                        selection: str = "protein") -> dict[str, Any]:
+    """Per-residue secondary structure via the pure-Python DSSP (no external binary)."""
+    try:
+        from MDAnalysis.analysis.dssp import DSSP
+    except Exception as exc:  # pragma: no cover
+        raise RuntimeError("MDAnalysis (with dssp) is required.") from exc
+
+    u = store.get(sid).universe()
+    sel = u.select_atoms(selection)
+    if sel.select_atoms("protein").n_atoms == 0:
+        raise ValueError("Secondary structure needs a protein selection.")
+    try:
+        res = DSSP(sel).run()
+    except Exception as exc:
+        raise ValueError(f"DSSP failed: {exc}") from exc
+
+    codes = list(res.results.dssp[0])  # first frame, 3-state H / E / -
+    cas = sel.select_atoms("protein and name CA")
+    residues = list(cas.residues)
+    per_residue = []
+    for code, r in zip(codes, residues):
+        per_residue.append(
+            {"resid": int(r.resid), "resname": str(r.resname),
+             "segid": str(getattr(r, "segid", "")), "ss": code, "ss_name": _SS_NAMES.get(code, code)}
+        )
+    n = len(per_residue) or 1
+    summary = {
+        "Helix": round(100 * sum(1 for p in per_residue if p["ss"] == "H") / n, 1),
+        "Strand": round(100 * sum(1 for p in per_residue if p["ss"] == "E") / n, 1),
+        "Loop/coil": round(100 * sum(1 for p in per_residue if p["ss"] == "-") / n, 1),
+    }
+    return {"selection": selection, "n_residues": len(per_residue),
+            "summary_percent": summary, "per_residue": per_residue,
+            "string": "".join(codes)}
+
+
+# --- Ramachandran (phi/psi) -------------------------------------------------
+
+
+def _rama_region(phi: float, psi: float) -> str:
+    if -160 <= phi <= -40 and -70 <= psi <= -10:
+        return "alpha-R"
+    if -180 <= phi <= -40 and (90 <= psi <= 180 or -180 <= psi <= -160):
+        return "beta"
+    if 40 <= phi <= 80 and 10 <= psi <= 80:
+        return "alpha-L"
+    return "other"
+
+
+def ramachandran(store: StructureStore, sid: str,
+                 selection: str = "protein") -> dict[str, Any]:
+    """Backbone phi/psi dihedrals per residue, with rough region assignment."""
+    try:
+        from MDAnalysis.analysis.dihedrals import Ramachandran
+    except Exception as exc:  # pragma: no cover
+        raise RuntimeError("MDAnalysis (with dihedrals) is required.") from exc
+
+    u = store.get(sid).universe()
+    sel = u.select_atoms(selection)
+    if sel.select_atoms("protein").n_atoms == 0:
+        raise ValueError("Ramachandran needs a protein selection.")
+    rama = Ramachandran(sel).run()
+    angles = np.asarray(rama.results.angles[0])  # (n_res_with_phi_psi, 2)
+    # residues that have both phi and psi (interior residues), in order
+    residues = [r for r in sel.residues
+                if r.phi_selection() is not None and r.psi_selection() is not None]
+    per = []
+    for (phi, psi), r in zip(angles, residues):
+        per.append({"resid": int(r.resid), "resname": str(r.resname),
+                    "phi": round(float(phi), 1), "psi": round(float(psi), 1),
+                    "region": _rama_region(float(phi), float(psi))})
+    return {"selection": selection, "n_residues": len(per), "per_residue": per}
+
+
+# --- contacts & salt bridges ------------------------------------------------
+
+
+def contacts(store: StructureStore, sid: str, selection: str = "protein",
+             cutoff: float = 4.5, min_seq_sep: int = 2,
+             max_pairs: int = 1000) -> dict[str, Any]:
+    """Residue-residue heavy-atom contacts and salt bridges within a selection."""
+    from MDAnalysis.lib.distances import capped_distance
+
+    u = store.get(sid).universe()
+    heavy = u.select_atoms(f"({selection}) and not name H*")
+    if heavy.n_atoms == 0:
+        raise ValueError("Selection matched no heavy atoms.")
+
+    resindices = heavy.atoms.resindices
+    pairs_idx, _ = capped_distance(heavy.positions, heavy.positions, max_cutoff=cutoff,
+                                   box=u.dimensions, return_distances=True)
+    # collapse atom pairs -> residue pairs, keeping the minimum distance
+    best: dict[tuple[int, int], float] = {}
+    from MDAnalysis.lib.distances import calc_bonds
+    pos = heavy.positions
+    for i, j in pairs_idx:
+        ri, rj = int(resindices[i]), int(resindices[j])
+        if ri >= rj:
+            continue
+        if abs(ri - rj) < min_seq_sep:
+            continue
+        d = float(np.linalg.norm(pos[i] - pos[j]))
+        key = (ri, rj)
+        if key not in best or d < best[key]:
+            best[key] = d
+
+    res_by_index = {int(r.resindex): r for r in heavy.residues}
+    contact_list = []
+    for (ri, rj), d in sorted(best.items(), key=lambda kv: kv[1])[:max_pairs]:
+        a, b = res_by_index[ri], res_by_index[rj]
+        contact_list.append({
+            "a": f"{a.resname}{a.resid}", "b": f"{b.resname}{b.resid}",
+            "min_dist": round(d, 2),
+        })
+
+    # salt bridges: cationic N vs anionic O sidechain atoms within 4.0 A
+    cation = u.select_atoms(
+        f"({selection}) and ((resname ARG and name NH1 NH2 NE) or "
+        f"(resname LYS and name NZ) or (resname HIS HSP and name ND1 NE2))")
+    anion = u.select_atoms(
+        f"({selection}) and ((resname ASP and name OD1 OD2) or (resname GLU and name OE1 OE2))")
+    salt = []
+    if cation.n_atoms and anion.n_atoms:
+        sb_idx, sb_d = capped_distance(cation.positions, anion.positions,
+                                       max_cutoff=4.0, box=u.dimensions, return_distances=True)
+        seen = set()
+        for (ci, ai), d in sorted(zip(sb_idx, sb_d), key=lambda kv: kv[1]):
+            c, an = cation.atoms[int(ci)], anion.atoms[int(ai)]
+            key = (int(c.resid), int(an.resid))
+            if key in seen:
+                continue
+            seen.add(key)
+            salt.append({"cation": f"{c.resname}{c.resid}", "anion": f"{an.resname}{an.resid}",
+                         "dist": round(float(d), 2)})
+
+    return {
+        "selection": selection,
+        "cutoff": cutoff,
+        "n_contacts": len(best),
+        "contacts": contact_list,
+        "salt_bridges": salt,
+    }

@@ -1,102 +1,130 @@
-REMARK  Meon Spring bundled demo structure
-REMARK  Idealised poly-Ala alpha-helix (ATOM) + TIP3 waters and POPE/POPG/
-REMARK  cardiolipin lipids (HETATM) for validating molecule-type detection.
-REMARK  Geometry is schematic (offline smoke-testing), not energy-minimised.
-ATOM      1  N   ALA A   1       1.700   0.400  -0.500  1.00  0.00           N
-ATOM      2  CA  ALA A   1       2.300   0.000   0.000  1.00  0.00           C
-ATOM      3  C   ALA A   1       3.000  -0.400   0.600  1.00  0.00           C
-ATOM      4  O   ALA A   1       3.600  -1.300   0.300  1.00  0.00           O
-ATOM      5  CB  ALA A   1       1.800  -0.900   0.900  1.00  0.00           C
-ATOM      6  N   ALA A   2      -0.999   2.665   1.000  1.00  0.00           N
-ATOM      7  CA  ALA A   2      -0.399   2.265   1.500  1.00  0.00           C
-ATOM      8  C   ALA A   2       0.301   1.865   2.100  1.00  0.00           C
-ATOM      9  O   ALA A   2       0.901   0.965   1.800  1.00  0.00           O
-ATOM     10  CB  ALA A   2      -0.899   1.365   2.400  1.00  0.00           C
-ATOM     11  N   ALA A   3      -2.761  -0.387   2.500  1.00  0.00           N
-ATOM     12  CA  ALA A   3      -2.161  -0.787   3.000  1.00  0.00           C
-ATOM     13  C   ALA A   3      -1.461  -1.187   3.600  1.00  0.00           C
-ATOM     14  O   ALA A   3      -0.861  -2.087   3.300  1.00  0.00           O
-ATOM     15  CB  ALA A   3      -2.661  -1.687   3.900  1.00  0.00           C
-ATOM     16  N   ALA A   4       0.550  -1.592   4.000  1.00  0.00           N
-ATOM     17  CA  ALA A   4       1.150  -1.992   4.500  1.00  0.00           C
-ATOM     18  C   ALA A   4       1.850  -2.392   5.100  1.00  0.00           C
-ATOM     19  O   ALA A   4       2.450  -3.292   4.800  1.00  0.00           O
-ATOM     20  CB  ALA A   4       0.650  -2.892   5.400  1.00  0.00           C
-ATOM     21  N   ALA A   5       1.162   1.878   5.500  1.00  0.00           N
-ATOM     22  CA  ALA A   5       1.762   1.478   6.000  1.00  0.00           C
-ATOM     23  C   ALA A   5       2.462   1.078   6.600  1.00  0.00           C
-ATOM     24  O   ALA A   5       3.062   0.178   6.300  1.00  0.00           O
-ATOM     25  CB  ALA A   5       1.262   0.578   6.900  1.00  0.00           C
-ATOM     26  N   ALA A   6      -2.362   1.878   7.000  1.00  0.00           N
-ATOM     27  CA  ALA A   6      -1.762   1.478   7.500  1.00  0.00           C
-ATOM     28  C   ALA A   6      -1.062   1.078   8.100  1.00  0.00           C
-ATOM     29  O   ALA A   6      -0.462   0.178   7.800  1.00  0.00           O
-ATOM     30  CB  ALA A   6      -2.262   0.578   8.400  1.00  0.00           C
-ATOM     31  N   ALA A   7      -1.750  -1.592   8.500  1.00  0.00           N
-ATOM     32  CA  ALA A   7      -1.150  -1.992   9.000  1.00  0.00           C
-ATOM     33  C   ALA A   7      -0.450  -2.392   9.600  1.00  0.00           C
-ATOM     34  O   ALA A   7       0.150  -3.292   9.300  1.00  0.00           O
-ATOM     35  CB  ALA A   7      -1.650  -2.892   9.900  1.00  0.00           C
-ATOM     36  N   ALA A   8       1.561  -0.387  10.000  1.00  0.00           N
-ATOM     37  CA  ALA A   8       2.161  -0.787  10.500  1.00  0.00           C
-ATOM     38  C   ALA A   8       2.861  -1.187  11.100  1.00  0.00           C
-ATOM     39  O   ALA A   8       3.461  -2.087  10.800  1.00  0.00           O
-ATOM     40  CB  ALA A   8       1.661  -1.687  11.400  1.00  0.00           C
-ATOM     41  N   ALA A   9      -0.201   2.665  11.500  1.00  0.00           N
-ATOM     42  CA  ALA A   9       0.399   2.265  12.000  1.00  0.00           C
-ATOM     43  C   ALA A   9       1.099   1.865  12.600  1.00  0.00           C
-ATOM     44  O   ALA A   9       1.699   0.965  12.300  1.00  0.00           O
-ATOM     45  CB  ALA A   9      -0.101   1.365  12.900  1.00  0.00           C
-ATOM     46  N   ALA A  10      -2.900   0.400  13.000  1.00  0.00           N
-ATOM     47  CA  ALA A  10      -2.300   0.000  13.500  1.00  0.00           C
-ATOM     48  C   ALA A  10      -1.600  -0.400  14.100  1.00  0.00           C
-ATOM     49  O   ALA A  10      -1.000  -1.300  13.800  1.00  0.00           O
-ATOM     50  CB  ALA A  10      -2.800  -0.900  14.400  1.00  0.00           C
-ATOM     51  N   ALA A  11      -0.201  -1.865  14.500  1.00  0.00           N
-ATOM     52  CA  ALA A  11       0.399  -2.265  15.000  1.00  0.00           C
-ATOM     53  C   ALA A  11       1.099  -2.665  15.600  1.00  0.00           C
-ATOM     54  O   ALA A  11       1.699  -3.565  15.300  1.00  0.00           O
-ATOM     55  CB  ALA A  11      -0.101  -3.165  15.900  1.00  0.00           C
-ATOM     56  N   ALA A  12       1.561   1.187  16.000  1.00  0.00           N
-ATOM     57  CA  ALA A  12       2.161   0.787  16.500  1.00  0.00           C
-ATOM     58  C   ALA A  12       2.861   0.387  17.100  1.00  0.00           C
-ATOM     59  O   ALA A  12       3.461  -0.513  16.800  1.00  0.00           O
-ATOM     60  CB  ALA A  12       1.661  -0.113  17.400  1.00  0.00           C
+REMARK  Meon Spring demo: idealised poly-Ala alpha-helix (phi/psi -57/-47),
+REMARK  realistic backbone+amide-H geometry, with TIP3 waters and
+REMARK  POPE/POPG/cardiolipin lipids (HETATM).
+ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00  0.00           N
+ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00  0.00           C
+ATOM      3  CB  ALA A   1       1.956  -0.725  -1.241  1.00  0.00           C
+ATOM      4  C   ALA A   1       2.005   1.424   0.000  1.00  0.00           C
+ATOM      5  O   ALA A   1       2.904   1.754   0.773  1.00  0.00           O
+ATOM      6  N   ALA A   2       1.456   2.263  -0.872  1.00  0.00           N
+ATOM      7  H   ALA A   2       0.721   1.930  -1.480  1.00  0.00           H
+ATOM      8  CA  ALA A   2       1.887   3.652  -0.974  1.00  0.00           C
+ATOM      9  CB  ALA A   2       1.028   4.365  -2.008  1.00  0.00           C
+ATOM     10  C   ALA A   2       1.751   4.366   0.366  1.00  0.00           C
+ATOM     11  O   ALA A   2       2.669   5.058   0.808  1.00  0.00           O
+ATOM     12  N   ALA A   3       0.601   4.194   1.009  1.00  0.00           N
+ATOM     13  H   ALA A   3      -0.114   3.614   0.593  1.00  0.00           H
+ATOM     14  CA  ALA A   3       0.343   4.822   2.300  1.00  0.00           C
+ATOM     15  CB  ALA A   3      -1.023   4.382   2.803  1.00  0.00           C
+ATOM     16  C   ALA A   3       1.403   4.426   3.321  1.00  0.00           C
+ATOM     17  O   ALA A   3       1.942   5.274   4.032  1.00  0.00           O
+ATOM     18  N   ALA A   4       1.698   3.132   3.389  1.00  0.00           N
+ATOM     19  H   ALA A   4       1.220   2.485   2.778  1.00  0.00           H
+ATOM     20  CA  ALA A   4       2.694   2.621   4.324  1.00  0.00           C
+ATOM     21  CB  ALA A   4       2.851   1.123   4.114  1.00  0.00           C
+ATOM     22  C   ALA A   4       4.043   3.299   4.110  1.00  0.00           C
+ATOM     23  O   ALA A   4       4.688   3.735   5.064  1.00  0.00           O
+ATOM     24  N   ALA A   5       4.463   3.386   2.852  1.00  0.00           N
+ATOM     25  H   ALA A   5       3.887   3.008   2.114  1.00  0.00           H
+ATOM     26  CA  ALA A   5       5.735   4.011   2.511  1.00  0.00           C
+ATOM     27  CB  ALA A   5       5.899   4.015   0.999  1.00  0.00           C
+ATOM     28  C   ALA A   5       5.793   5.447   3.022  1.00  0.00           C
+ATOM     29  O   ALA A   5       6.782   5.861   3.627  1.00  0.00           O
+ATOM     30  N   ALA A   6       4.727   6.201   2.776  1.00  0.00           N
+ATOM     31  H   ALA A   6       3.947   5.801   2.274  1.00  0.00           H
+ATOM     32  CA  ALA A   6       4.655   7.591   3.211  1.00  0.00           C
+ATOM     33  CB  ALA A   6       3.293   8.158   2.841  1.00  0.00           C
+ATOM     34  C   ALA A   6       4.849   7.702   4.719  1.00  0.00           C
+ATOM     35  O   ALA A   6       5.619   8.536   5.196  1.00  0.00           O
+ATOM     36  N   ALA A   7       4.147   6.856   5.466  1.00  0.00           N
+ATOM     37  H   ALA A   7       3.532   6.195   5.013  1.00  0.00           H
+ATOM     38  CA  ALA A   7       4.241   6.858   6.921  1.00  0.00           C
+ATOM     39  CB  ALA A   7       3.375   5.738   7.477  1.00  0.00           C
+ATOM     40  C   ALA A   7       5.681   6.648   7.375  1.00  0.00           C
+ATOM     41  O   ALA A   7       6.179   7.366   8.243  1.00  0.00           O
+ATOM     42  N   ALA A   8       6.346   5.661   6.784  1.00  0.00           N
+ATOM     43  H   ALA A   8       5.880   5.108   6.078  1.00  0.00           H
+ATOM     44  CA  ALA A   8       7.729   5.355   7.127  1.00  0.00           C
+ATOM     45  CB  ALA A   8       8.226   4.227   6.236  1.00  0.00           C
+ATOM     46  C   ALA A   8       8.623   6.576   6.932  1.00  0.00           C
+ATOM     47  O   ALA A   8       9.430   6.911   7.799  1.00  0.00           O
+ATOM     48  N   ALA A   9       8.474   7.235   5.788  1.00  0.00           N
+ATOM     49  H   ALA A   9       7.794   6.908   5.116  1.00  0.00           H
+ATOM     50  CA  ALA A   9       9.267   8.419   5.477  1.00  0.00           C
+ATOM     51  CB  ALA A   9       8.819   8.980   4.136  1.00  0.00           C
+ATOM     52  C   ALA A   9       9.094   9.489   6.549  1.00  0.00           C
+ATOM     53  O   ALA A   9      10.071  10.067   7.025  1.00  0.00           O
+ATOM     54  N   ALA A  10       7.846   9.748   6.925  1.00  0.00           N
+ATOM     55  H   ALA A  10       7.087   9.238   6.495  1.00  0.00           H
+ATOM     56  CA  ALA A  10       7.544  10.749   7.941  1.00  0.00           C
+ATOM     57  CB  ALA A  10       6.044  10.762   8.196  1.00  0.00           C
+ATOM     58  C   ALA A  10       8.269  10.439   9.246  1.00  0.00           C
+ATOM     59  O   ALA A  10       8.881  11.319   9.852  1.00  0.00           O
+ATOM     60  N   ALA A  11       8.196   9.182   9.674  1.00  0.00           N
+ATOM     61  H   ALA A  11       7.678   8.507   9.131  1.00  0.00           H
+ATOM     62  CA  ALA A  11       8.845   8.754  10.907  1.00  0.00           C
+ATOM     63  CB  ALA A  11       8.636   7.258  11.087  1.00  0.00           C
+ATOM     64  C   ALA A  11      10.341   9.048  10.868  1.00  0.00           C
+ATOM     65  O   ALA A  11      10.902   9.586  11.823  1.00  0.00           O
+ATOM     66  N   ALA A  12      10.980   8.692   9.759  1.00  0.00           N
+ATOM     67  H   ALA A  12      10.462   8.254   9.012  1.00  0.00           H
+ATOM     68  CA  ALA A  12      12.411   8.917   9.594  1.00  0.00           C
+ATOM     69  CB  ALA A  12      12.829   8.465   8.203  1.00  0.00           C
+ATOM     70  C   ALA A  12      12.756  10.392   9.765  1.00  0.00           C
+ATOM     71  O   ALA A  12      13.699  10.741  10.475  1.00  0.00           O
+ATOM     72  N   ALA A  13      11.986  11.254   9.109  1.00  0.00           N
+ATOM     73  H   ALA A  13      11.227  10.904   8.543  1.00  0.00           H
+ATOM     74  CA  ALA A  13      12.208  12.693   9.187  1.00  0.00           C
+ATOM     75  CB  ALA A  13      11.129  13.408   8.388  1.00  0.00           C
+ATOM     76  C   ALA A  13      12.161  13.176  10.633  1.00  0.00           C
+ATOM     77  O   ALA A  13      13.028  13.929  11.075  1.00  0.00           O
+ATOM     78  N   ALA A  14      11.142  12.737  11.365  1.00  0.00           N
+ATOM     79  H   ALA A  14      10.463  12.121  10.943  1.00  0.00           H
+ATOM     80  CA  ALA A  14      10.980  13.124  12.762  1.00  0.00           C
+ATOM     81  CB  ALA A  14       9.767  12.410  13.338  1.00  0.00           C
+ATOM     82  C   ALA A  14      12.213  12.752  13.578  1.00  0.00           C
+ATOM     83  O   ALA A  14      12.724  13.561  14.353  1.00  0.00           O
+ATOM     84  N   ALA A  15      12.686  11.523  13.400  1.00  0.00           N
+ATOM     85  H   ALA A  15      12.221  10.906  12.749  1.00  0.00           H
+ATOM     86  CA  ALA A  15      13.859  11.041  14.119  1.00  0.00           C
+ATOM     87  CB  ALA A  15      14.187   9.632  13.651  1.00  0.00           C
+ATOM     88  C   ALA A  15      15.063  11.944  13.868  1.00  0.00           C
+ATOM     89  O   ALA A  15      15.767  12.330  14.801  1.00  0.00           O
 TER
-HETATM   61  OH2 TIP3W   1      14.000   0.000   0.000  1.00  0.00           O
-HETATM   62  H1  TIP3W   1      14.760   0.590   0.000  1.00  0.00           H
-HETATM   63  H2  TIP3W   1      13.240   0.590   0.000  1.00  0.00           H
-HETATM   64  OH2 TIP3W   2      14.000   2.000   3.000  1.00  0.00           O
-HETATM   65  H1  TIP3W   2      14.760   2.590   3.000  1.00  0.00           H
-HETATM   66  H2  TIP3W   2      13.240   2.590   3.000  1.00  0.00           H
-HETATM   67  OH2 TIP3W   3      14.000   4.000   6.000  1.00  0.00           O
-HETATM   68  H1  TIP3W   3      14.760   4.590   6.000  1.00  0.00           H
-HETATM   69  H2  TIP3W   3      13.240   4.590   6.000  1.00  0.00           H
-HETATM   70  N   POPEM   1      18.000   0.000   0.000  1.00  0.00           N
-HETATM   71  C12 POPEM   1      19.400   0.200   0.100  1.00  0.00           C
-HETATM   72  C11 POPEM   1      20.500  -0.300   0.600  1.00  0.00           C
-HETATM   73  P   POPEM   1      21.800   0.400   0.200  1.00  0.00           P
-HETATM   74  O13 POPEM   1      22.600   1.100   1.100  1.00  0.00           O
-HETATM   75  O14 POPEM   1      22.500  -0.700  -0.400  1.00  0.00           O
-HETATM   76  C1  POPEM   1      23.200   1.600   2.000  1.00  0.00           C
-HETATM   77  C2  POPEM   1      24.400   1.000   2.600  1.00  0.00           C
-HETATM   78  C21 POPEM   1      25.600   1.700   3.100  1.00  0.00           C
-HETATM   79  C13 POPGM   2      24.000   0.000   0.000  1.00  0.00           C
-HETATM   80  OC3 POPGM   2      25.100   0.500   0.400  1.00  0.00           O
-HETATM   81  C12 POPGM   2      26.200  -0.200   0.900  1.00  0.00           C
-HETATM   82  P   POPGM   2      27.500   0.500   0.500  1.00  0.00           P
-HETATM   83  O13 POPGM   2      28.300   1.200   1.400  1.00  0.00           O
-HETATM   84  O14 POPGM   2      28.200  -0.600  -0.100  1.00  0.00           O
-HETATM   85  C1  POPGM   2      29.000   1.500   2.300  1.00  0.00           C
-HETATM   86  C2  POPGM   2      30.200   0.900   2.900  1.00  0.00           C
-HETATM   87  C21 POPGM   2      31.400   1.600   3.400  1.00  0.00           C
-HETATM   88  P1  CDL2M   3      30.000   0.000   0.000  1.00  0.00           P
-HETATM   89  O11 CDL2M   3      30.900   0.800   0.500  1.00  0.00           O
-HETATM   90  O12 CDL2M   3      29.200   0.700  -0.600  1.00  0.00           O
-HETATM   91  C1  CDL2M   3      31.400  -1.000   1.000  1.00  0.00           C
-HETATM   92  C2  CDL2M   3      32.600  -0.500   1.700  1.00  0.00           C
-HETATM   93  CG  CDL2M   3      33.400  -1.400   2.400  1.00  0.00           C
-HETATM   94  P2  CDL2M   3      34.800  -0.900   2.900  1.00  0.00           P
-HETATM   95  O21 CDL2M   3      35.600  -0.200   3.800  1.00  0.00           O
-HETATM   96  O22 CDL2M   3      35.400  -1.900   2.200  1.00  0.00           O
+HETATM   90  OH2 TIP3W   1      14.000   0.000   0.000  1.00  0.00           O
+HETATM   91  H1  TIP3W   1      14.760   0.590   0.000  1.00  0.00           H
+HETATM   92  H2  TIP3W   1      13.240   0.590   0.000  1.00  0.00           H
+HETATM   93  OH2 TIP3W   2      14.000   2.000   3.000  1.00  0.00           O
+HETATM   94  H1  TIP3W   2      14.760   2.590   3.000  1.00  0.00           H
+HETATM   95  H2  TIP3W   2      13.240   2.590   3.000  1.00  0.00           H
+HETATM   96  OH2 TIP3W   3      14.000   4.000   6.000  1.00  0.00           O
+HETATM   97  H1  TIP3W   3      14.760   4.590   6.000  1.00  0.00           H
+HETATM   98  H2  TIP3W   3      13.240   4.590   6.000  1.00  0.00           H
+HETATM   99  N   POPEM   1      18.000   0.000   0.000  1.00  0.00           N
+HETATM  100  C12 POPEM   1      19.400   0.200   0.100  1.00  0.00           C
+HETATM  101  C11 POPEM   1      20.500  -0.300   0.600  1.00  0.00           C
+HETATM  102  P   POPEM   1      21.800   0.400   0.200  1.00  0.00           P
+HETATM  103  O13 POPEM   1      22.600   1.100   1.100  1.00  0.00           O
+HETATM  104  O14 POPEM   1      22.500  -0.700  -0.400  1.00  0.00           O
+HETATM  105  C1  POPEM   1      23.200   1.600   2.000  1.00  0.00           C
+HETATM  106  C2  POPEM   1      24.400   1.000   2.600  1.00  0.00           C
+HETATM  107  C21 POPEM   1      25.600   1.700   3.100  1.00  0.00           C
+HETATM  108  C13 POPGM   2      24.000   0.000   0.000  1.00  0.00           C
+HETATM  109  OC3 POPGM   2      25.100   0.500   0.400  1.00  0.00           O
+HETATM  110  C12 POPGM   2      26.200  -0.200   0.900  1.00  0.00           C
+HETATM  111  P   POPGM   2      27.500   0.500   0.500  1.00  0.00           P
+HETATM  112  O13 POPGM   2      28.300   1.200   1.400  1.00  0.00           O
+HETATM  113  O14 POPGM   2      28.200  -0.600  -0.100  1.00  0.00           O
+HETATM  114  C1  POPGM   2      29.000   1.500   2.300  1.00  0.00           C
+HETATM  115  C2  POPGM   2      30.200   0.900   2.900  1.00  0.00           C
+HETATM  116  C21 POPGM   2      31.400   1.600   3.400  1.00  0.00           C
+HETATM  117  P1  CDL2M   3      30.000   0.000   0.000  1.00  0.00           P
+HETATM  118  O11 CDL2M   3      30.900   0.800   0.500  1.00  0.00           O
+HETATM  119  O12 CDL2M   3      29.200   0.700  -0.600  1.00  0.00           O
+HETATM  120  C1  CDL2M   3      31.400  -1.000   1.000  1.00  0.00           C
+HETATM  121  C2  CDL2M   3      32.600  -0.500   1.700  1.00  0.00           C
+HETATM  122  CG  CDL2M   3      33.400  -1.400   2.400  1.00  0.00           C
+HETATM  123  P2  CDL2M   3      34.800  -0.900   2.900  1.00  0.00           P
+HETATM  124  O21 CDL2M   3      35.600  -0.200   3.800  1.00  0.00           O
+HETATM  125  O22 CDL2M   3      35.400  -1.900   2.200  1.00  0.00           O
 END

@@ -2,14 +2,22 @@ import { useState } from "react";
 import { api, StructureRef } from "../api";
 import { PickedSelection } from "./SelectionTree";
 
-type Tab = "sasa" | "distance" | "helix" | "rmsd" | "rmsf" | "hole";
-const TABS: { id: Tab; label: string }[] = [
+type Tab =
+  | "dssp" | "gyration" | "rama" | "hbonds" | "contacts"
+  | "sasa" | "distance" | "helix" | "rmsd" | "rmsf" | "hole";
+
+const ANALYSES: { id: Tab; label: string }[] = [
+  { id: "dssp", label: "Secondary structure (DSSP)" },
+  { id: "gyration", label: "Radius of gyration" },
+  { id: "rama", label: "Ramachandran (φ/ψ)" },
+  { id: "hbonds", label: "Hydrogen bonds & survival" },
+  { id: "contacts", label: "Contacts & salt bridges" },
   { id: "sasa", label: "SASA" },
-  { id: "distance", label: "Dist" },
-  { id: "helix", label: "Helix" },
-  { id: "rmsd", label: "RMSD" },
+  { id: "distance", label: "Inter-residue distance" },
+  { id: "helix", label: "Helix geometry" },
+  { id: "rmsd", label: "RMSD (vs structure)" },
   { id: "rmsf", label: "RMSF" },
-  { id: "hole", label: "HOLE2" },
+  { id: "hole", label: "HOLE2 pore profile" },
 ];
 
 interface Props {
@@ -19,19 +27,25 @@ interface Props {
 }
 
 export function AnalysisPanel({ structure, structures, picked }: Props) {
-  const [tab, setTab] = useState<Tab>("sasa");
+  const [tab, setTab] = useState<Tab>("dssp");
   return (
     <div className="section">
       <h3>Analysis</h3>
-      <div className="tabs">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
-      </div>
       <div className="section-body">
+        <label className="field" style={{ marginTop: 0 }}>
+          <span>Analysis type</span>
+          <select value={tab} onChange={(e) => setTab(e.target.value as Tab)}>
+            {ANALYSES.map((a) => (
+              <option key={a.id} value={a.id}>{a.label}</option>
+            ))}
+          </select>
+        </label>
         {!structure && <div className="muted">Select a structure to analyse.</div>}
+        {structure && tab === "dssp" && <Dssp structure={structure} picked={picked} />}
+        {structure && tab === "gyration" && <Gyration structure={structure} picked={picked} />}
+        {structure && tab === "rama" && <Rama structure={structure} picked={picked} />}
+        {structure && tab === "hbonds" && <HBonds structure={structure} picked={picked} />}
+        {structure && tab === "contacts" && <Contacts structure={structure} picked={picked} />}
         {structure && tab === "sasa" && <Sasa structure={structure} picked={picked} />}
         {structure && tab === "distance" && <Distance structure={structure} picked={picked} />}
         {structure && tab === "helix" && <Helix structure={structure} picked={picked} />}
@@ -79,6 +93,219 @@ function useRunner() {
     }
   };
   return { busy, error, run };
+}
+
+// Shared prop shape for the simple, selection-only analyses.
+type SP = { structure: StructureRef; picked: PickedSelection | null };
+const useSel = (picked: PickedSelection | null, set: (s: string) => void) =>
+  [{ label: "Use as selection", onClick: () => set(picked!.mda) }];
+
+const SS_COLOR: Record<string, string> = { H: "#4f9dff", E: "#e0a64b", "-": "#6b7280" };
+
+function Dssp({ structure, picked }: SP) {
+  const [sele, setSele] = useState("protein");
+  const [res, setRes] = useState<any>(null);
+  const { busy, error, run } = useRunner();
+  return (
+    <>
+      <FromSelection picked={picked} actions={useSel(picked, setSele)} />
+      <label className="field"><span>Selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.dssp(structure.id, sele)))}>
+        {busy ? "Assigning…" : "Assign secondary structure"}
+      </button>
+      {error && <div className="error">{error}</div>}
+      {res && (
+        <>
+          <div className="row" style={{ gap: 4, marginTop: 8 }}>
+            {Object.entries(res.summary_percent).map(([k, v]) => (
+              <span key={k} className="pill" style={{ flex: 1, textAlign: "center" }}>{k}: {v as number}%</span>
+            ))}
+          </div>
+          {/* Compact SS ribbon: one coloured cell per residue */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 2, margin: "8px 0" }}>
+            {res.per_residue.map((p: any, i: number) => (
+              <span key={i} title={`${p.resname} ${p.resid}: ${p.ss_name}`}
+                style={{ width: 10, height: 14, borderRadius: 2, background: SS_COLOR[p.ss] || "#6b7280" }} />
+            ))}
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Residue</th><th>SS</th></tr></thead>
+              <tbody>
+                {res.per_residue.map((p: any, i: number) => (
+                  <tr key={i}><td>{p.resname} {p.resid}</td><td>{p.ss_name}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function Gyration({ structure, picked }: SP) {
+  const [sele, setSele] = useState("protein");
+  const [res, setRes] = useState<any>(null);
+  const { busy, error, run } = useRunner();
+  return (
+    <>
+      <FromSelection picked={picked} actions={useSel(picked, setSele)} />
+      <label className="field"><span>Selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.gyration(structure.id, sele)))}>
+        {busy ? "Computing…" : "Compute Rg"}
+      </button>
+      {error && <div className="error">{error}</div>}
+      {res && (
+        <>
+          <div className="kv" style={{ marginTop: 8 }}><span className="k">Radius of gyration</span><span className="v" style={{ color: "var(--accent)" }}>{res.rg} Å</span></div>
+          <div className="kv"><span className="k">Atoms</span><span className="v">{res.n_atoms}</span></div>
+          {res.per_chain.length > 1 && res.per_chain.map((c: any) => (
+            <div className="kv" key={c.chain}><span className="k">Chain {c.chain}</span><span className="v">{c.rg} Å</span></div>
+          ))}
+        </>
+      )}
+    </>
+  );
+}
+
+const REGION_COLOR: Record<string, string> = { "alpha-R": "#4f9dff", beta: "#e0a64b", "alpha-L": "#46c08a", other: "#6b7280" };
+
+function Rama({ structure, picked }: SP) {
+  const [sele, setSele] = useState("protein");
+  const [res, setRes] = useState<any>(null);
+  const { busy, error, run } = useRunner();
+  // simple inline phi/psi scatter (-180..180 on both axes)
+  const S = 150, map = (v: number) => ((v + 180) / 360) * S;
+  return (
+    <>
+      <FromSelection picked={picked} actions={useSel(picked, setSele)} />
+      <label className="field"><span>Selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.ramachandran(structure.id, sele)))}>
+        {busy ? "Computing…" : "Compute φ/ψ"}
+      </button>
+      {error && <div className="error">{error}</div>}
+      {res && (
+        <>
+          <svg width={S} height={S} style={{ marginTop: 8, background: "var(--panel-2)", borderRadius: 5, display: "block" }}>
+            <line x1={S / 2} y1={0} x2={S / 2} y2={S} stroke="#33384280" />
+            <line x1={0} y1={S / 2} x2={S} y2={S / 2} stroke="#33384280" />
+            {res.per_residue.map((p: any, i: number) => (
+              <circle key={i} cx={map(p.phi)} cy={S - map(p.psi)} r={2.6}
+                fill={REGION_COLOR[p.region]} opacity={0.85}>
+                <title>{p.resname} {p.resid}: φ={p.phi}, ψ={p.psi} ({p.region})</title>
+              </circle>
+            ))}
+          </svg>
+          <p className="muted" style={{ marginTop: 4 }}>φ (x) vs ψ (y), −180…180°. {res.n_residues} residues.</p>
+        </>
+      )}
+    </>
+  );
+}
+
+function HBonds({ structure, picked }: SP) {
+  const [sele, setSele] = useState("protein");
+  const [res, setRes] = useState<any>(null);
+  const { busy, error, run } = useRunner();
+  return (
+    <>
+      <FromSelection picked={picked} actions={useSel(picked, setSele)} />
+      <label className="field"><span>Selection (backbone donors/acceptors within)</span>
+        <input value={sele} onChange={(e) => setSele(e.target.value)} />
+      </label>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.hbonds(structure.id, sele)))}>
+        {busy ? "Finding H-bonds…" : "Analyse hydrogen bonds"}
+      </button>
+      {error && <div className="error">{error}</div>}
+      {res && (
+        <>
+          <div className="kv" style={{ marginTop: 8 }}><span className="k">Unique H-bonds</span><span className="v">{res.n_unique}</span></div>
+          <div className="kv"><span className="k">Mean per frame</span><span className="v">{res.mean_count}</span></div>
+          <div className="kv"><span className="k">Frames</span><span className="v">{res.n_frames}</span></div>
+          {res.survival.available ? (
+            <>
+              <div className="kv"><span className="k">Survival time</span><span className="v" style={{ color: "var(--accent)" }}>{res.survival.survival_time} frames</span></div>
+              <p className="muted" style={{ marginTop: 6, marginBottom: 2 }}>Survival autocorrelation C(τ):</p>
+              <Sparkline values={res.survival.autocorrelation} />
+              <p className="muted" style={{ marginTop: 4 }}>{res.survival.note}</p>
+            </>
+          ) : (
+            <div className="note">{res.survival.note}</div>
+          )}
+          <div className="table-wrap" style={{ marginTop: 8 }}>
+            <table>
+              <thead><tr><th>Donor</th><th>Acceptor</th><th className="num">Occ.</th></tr></thead>
+              <tbody>
+                {res.pairs.map((p: any, i: number) => (
+                  <tr key={i}><td>{p.donor}</td><td>{p.acceptor}</td><td className="num">{(p.occupancy * 100).toFixed(0)}%</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function Sparkline({ values }: { values: number[] }) {
+  const W = 150, H = 40, n = values.length;
+  if (n < 2) return null;
+  const pts = values.map((v, i) => `${(i / (n - 1)) * W},${H - v * H}`).join(" ");
+  return (
+    <svg width={W} height={H} style={{ background: "var(--panel-2)", borderRadius: 5, display: "block" }}>
+      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth={1.5} />
+    </svg>
+  );
+}
+
+function Contacts({ structure, picked }: SP) {
+  const [sele, setSele] = useState("protein");
+  const [cutoff, setCutoff] = useState(4.5);
+  const [res, setRes] = useState<any>(null);
+  const { busy, error, run } = useRunner();
+  return (
+    <>
+      <FromSelection picked={picked} actions={useSel(picked, setSele)} />
+      <label className="field"><span>Selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
+      <label className="field"><span>Contact cutoff: {cutoff.toFixed(1)} Å</span>
+        <input type="range" min={3} max={8} step={0.5} value={cutoff} onChange={(e) => setCutoff(parseFloat(e.target.value))} />
+      </label>
+      <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.contacts(structure.id, sele, cutoff)))}>
+        {busy ? "Computing…" : "Find contacts & salt bridges"}
+      </button>
+      {error && <div className="error">{error}</div>}
+      {res && (
+        <>
+          <div className="kv" style={{ marginTop: 8 }}><span className="k">Residue contacts</span><span className="v">{res.n_contacts}</span></div>
+          <div className="kv"><span className="k">Salt bridges</span><span className="v">{res.salt_bridges.length}</span></div>
+          {res.salt_bridges.length > 0 && (
+            <div className="table-wrap" style={{ marginTop: 8 }}>
+              <table>
+                <thead><tr><th>Cation</th><th>Anion</th><th className="num">Å</th></tr></thead>
+                <tbody>
+                  {res.salt_bridges.map((s: any, i: number) => (
+                    <tr key={i}><td>{s.cation}</td><td>{s.anion}</td><td className="num">{s.dist}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="table-wrap" style={{ marginTop: 8 }}>
+            <table>
+              <thead><tr><th>Residue A</th><th>Residue B</th><th className="num">Min Å</th></tr></thead>
+              <tbody>
+                {res.contacts.slice(0, 300).map((cpair: any, i: number) => (
+                  <tr key={i}><td>{cpair.a}</td><td>{cpair.b}</td><td className="num">{cpair.min_dist}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 function Sasa({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {

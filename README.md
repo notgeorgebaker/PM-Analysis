@@ -17,9 +17,11 @@ kind of work you'd otherwise do in VMD.
 
 - **Import structures** — open a local `.pdb`/`.mmCIF`, fetch from the **RCSB
   PDB** by 4-character ID, or pull a predicted model from **AlphaFold DB** by
-  UniProt accession. A bundled demo structure — a poly-Ala helix plus TIP3
-  waters and POPE/POPG/cardiolipin lipids — works fully offline and exercises
-  every molecule-type category.
+  UniProt accession. A bundled demo structure — an idealised poly-Ala α-helix
+  (real φ/ψ geometry, backbone + amide H) plus TIP3 waters and
+  POPE/POPG/cardiolipin lipids — works fully offline and exercises every
+  molecule-type category and analysis. A companion `demo_ensemble.pdb`
+  (8 perturbed models) demonstrates H-bond survival times and RMSF.
 - **Clean representations** — cartoon, surface, ball-and-stick, licorice,
   spacefill, ribbon, rope and more, each its own non-destructive layer with its
   own selection, colour scheme and opacity. Stack and tweak them live.
@@ -37,6 +39,16 @@ kind of work you'd otherwise do in VMD.
 - **Residue inspector** — click an atom to see its residue's name, chain,
   atom count and centre of geometry.
 - **Analysis suite**
+  - **Secondary structure (DSSP)** — per-residue helix/strand/coil with a colour
+    ribbon and %-composition, via MDAnalysis's pure-Python DSSP (no binary).
+  - **Radius of gyration** — overall and per-chain compactness.
+  - **Ramachandran (φ/ψ)** — backbone dihedrals with an inline scatter plot and
+    α/β region assignment.
+  - **Hydrogen bonds & survival times** — donor–acceptor inventory with
+    occupancy, and (for trajectories / multi-model ensembles) the **survival
+    autocorrelation C(τ)** and a characteristic survival time.
+  - **Contacts & salt bridges** — residue–residue heavy-atom contact list and
+    cation–anion salt-bridge detection.
   - **SASA** (solvent-accessible surface area), total and per-residue, via `freesasa`.
   - **Inter-residue distances** between two selections, using **Cα**, **centre
     of mass**, or **centre of geometry** reference points — plus a per-residue
@@ -116,11 +128,13 @@ your existing notebook selections almost verbatim.
 
 ## Roadmap (next passes)
 
-- **Trajectories**: PSF+DCD/XTC loading, a timeline scrubber, and time-series
-  RMSD / RMSF / inter-residue distances (matching `TM1_…_Inter_Residue_Distances.csv`).
+- **Trajectories**: PSF+DCD/XTC loading and a timeline scrubber. The static
+  analyses above are written to run per-frame, so they become time-series for
+  free (matching `TM1_…_Inter_Residue_Distances.csv`); the trajectory pass is
+  then mostly a frame slider + plotting.
 - In-viewport **measurement tools** (click-to-measure distances/angles) and
-  colour-by-analysis (paint SASA or RMSF straight onto the structure).
-- Plots for analysis output (currently tabular), and CSV export.
+  colour-by-analysis (paint SASA, RMSF or secondary structure onto the structure).
+- Richer plots (currently inline SVG/tables) and CSV export.
 - Packaged installers via `electron-builder` with a bundled Python runtime.
 
 ## Repository layout
@@ -131,10 +145,11 @@ backend/
   pmviewer/
     structure.py       load / summarise / select / inspect
     selection.py       human-readable molecule-type selection tree
+    analysis.py        SASA, distances, helix, RMSD/RMSF, Rg, DSSP, Ramachandran, contacts
+    hbonds.py          hydrogen bonds + survival times
     fetch.py           RCSB + AlphaFold fetching
-    analysis.py        SASA, distances, RMSD, RMSF
     hole.py            HOLE2 wrapper
-  samples/             bundled offline demo structure
+  samples/             bundled offline demo structure + multi-model ensemble
   test_api.py          in-process endpoint tests
 app/
   electron/            Electron main + preload

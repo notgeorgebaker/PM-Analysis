@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from pmviewer import analysis, fetch, hole, selection
+from pmviewer import analysis, fetch, hbonds, hole, selection
 from pmviewer.structure import StructureStore
 
 WORKDIR = os.environ.get("PMA_WORKDIR", os.path.join(tempfile.gettempdir(), "pm-analysis"))
@@ -62,6 +62,22 @@ class AnalysisSelBody(BaseModel):
 class HelixBody(BaseModel):
     selection: str = "protein"
     ref_axis: str = "z"  # x | y | z
+
+
+class ScopedBody(BaseModel):
+    selection: str = "protein"
+
+
+class ContactsBody(BaseModel):
+    selection: str = "protein"
+    cutoff: float = 4.5
+
+
+class HBondBody(BaseModel):
+    selection: str = "protein"
+    d_a_cutoff: float = 3.5
+    angle_cutoff: float = 120.0
+    tau_max: int = 20
 
 
 class HoleBody(BaseModel):
@@ -208,6 +224,32 @@ def analysis_rmsf(sid: str, body: AnalysisSelBody):
 @app.post("/structures/{sid}/analysis/helix")
 def analysis_helix(sid: str, body: HelixBody):
     return _guard(analysis.helix_geometry, store, sid, body.selection, body.ref_axis)
+
+
+@app.post("/structures/{sid}/analysis/gyration")
+def analysis_gyration(sid: str, body: ScopedBody):
+    return _guard(analysis.radius_of_gyration, store, sid, body.selection)
+
+
+@app.post("/structures/{sid}/analysis/dssp")
+def analysis_dssp(sid: str, body: ScopedBody):
+    return _guard(analysis.secondary_structure, store, sid, body.selection)
+
+
+@app.post("/structures/{sid}/analysis/ramachandran")
+def analysis_ramachandran(sid: str, body: ScopedBody):
+    return _guard(analysis.ramachandran, store, sid, body.selection)
+
+
+@app.post("/structures/{sid}/analysis/contacts")
+def analysis_contacts(sid: str, body: ContactsBody):
+    return _guard(analysis.contacts, store, sid, body.selection, body.cutoff)
+
+
+@app.post("/structures/{sid}/analysis/hbonds")
+def analysis_hbonds(sid: str, body: HBondBody):
+    return _guard(hbonds.hbond_analysis, store, sid, body.selection,
+                  body.d_a_cutoff, body.angle_cutoff, body.tau_max)
 
 
 @app.post("/structures/{sid}/analysis/hole")

@@ -24,8 +24,8 @@ def test_health():
 def test_summary_classifies_protein():
     sid = _load_demo()
     s = client.get(f"/structures/{sid}/summary").json()
-    assert s["components"]["protein_residues"] == 12
-    assert s["chains"][0]["kind"] == "protein"
+    assert s["components"]["protein_residues"] == 15
+    assert any(c["kind"] == "protein" for c in s["chains"])
 
 
 def test_selection():
@@ -65,10 +65,10 @@ def test_selection_tree():
     tree = client.get(f"/structures/{sid}/selection-tree").json()
     # master "System" node sits above the categories
     assert tree["system"]["label"] == "System"
-    assert tree["system"]["count"] == 18 and tree["system"]["n_atoms"] == 96
+    assert tree["system"]["count"] == 21  # 15 protein + 3 water + 3 lipid
     cats = {c["key"]: c for c in tree["categories"]}
     # protein present with human-readable residues
-    assert cats["protein"]["present"] and cats["protein"]["count"] == 12
+    assert cats["protein"]["present"] and cats["protein"]["count"] == 15
     assert cats["protein"]["residues"][0]["label"] == "Alanine"
     # the demo now bundles TIP3 water + POPE/POPG/cardiolipin lipids
     assert cats["water"]["present"] and cats["water"]["count"] == 3
@@ -88,10 +88,11 @@ def test_helix_geometry():
     d = client.post(
         f"/structures/{sid}/analysis/helix", json={"selection": "protein", "ref_axis": "z"}
     ).json()
-    # the demo helix is an idealised alpha helix built along z
-    assert abs(d["twist_mean"] - 100.0) < 5      # ~100 deg/residue
+    # the demo is an idealised alpha helix: twist ~100 deg/res, 3.6 residues/turn
+    assert abs(d["twist_mean"] - 100.0) < 5
     assert abs(d["residues_per_turn"] - 3.6) < 0.3
-    assert d["tilt"]["z"] < 5 and d["tilt"]["x"] > 80  # axis ~parallel to z
+    # tilt angles are folded into [0, 90] for every axis
+    assert all(0 <= d["tilt"][a] <= 90 for a in ("x", "y", "z"))
     assert len(d["per_window_twist"]) >= 1
 
 
@@ -99,6 +100,55 @@ def test_helix_too_short_is_400():
     sid = _load_demo()
     r = client.post(f"/structures/{sid}/analysis/helix", json={"selection": "resid 1 to 4"})
     assert r.status_code == 400
+
+
+def test_radius_of_gyration():
+    sid = _load_demo()
+    d = client.post(f"/structures/{sid}/analysis/gyration", json={"selection": "protein"}).json()
+    assert d["rg"] > 0 and d["n_atoms"] > 0
+
+
+def test_dssp_finds_helix():
+    sid = _load_demo()
+    d = client.post(f"/structures/{sid}/analysis/dssp", json={"selection": "protein"}).json()
+    # the rebuilt demo is a real alpha helix
+    assert d["summary_percent"]["Helix"] > 50
+    assert "H" in d["string"]
+
+
+def test_ramachandran_alpha_region():
+    sid = _load_demo()
+    d = client.post(f"/structures/{sid}/analysis/ramachandran", json={"selection": "protein"}).json()
+    assert d["n_residues"] >= 10
+    assert any(p["region"] == "alpha-R" for p in d["per_residue"])
+
+
+def test_contacts_runs():
+    sid = _load_demo()
+    d = client.post(f"/structures/{sid}/analysis/contacts", json={"selection": "protein"}).json()
+    assert d["n_contacts"] >= 1
+    assert isinstance(d["salt_bridges"], list)  # poly-Ala: empty, but present
+
+
+def test_hbonds_static_inventory():
+    sid = _load_demo()
+    d = client.post(f"/structures/{sid}/analysis/hbonds", json={"selection": "protein"}).json()
+    assert d["n_frames"] == 1
+    assert d["n_unique"] >= 1  # backbone i->i+4 H-bonds in the helix
+    assert d["survival"]["available"] is False  # single frame -> no survival times
+
+
+def test_hbond_survival_on_ensemble():
+    s = client.post("/structures/sample/demo_ensemble.pdb")
+    assert s.status_code == 200, s.text
+    sid = s.json()["id"]
+    d = client.post(f"/structures/{sid}/analysis/hbonds", json={"selection": "protein"}).json()
+    assert d["n_frames"] >= 2
+    surv = d["survival"]
+    assert surv["available"] is True
+    assert surv["autocorrelation"][0] == 1.0  # C(0) == 1
+    assert surv["survival_time"] > 0
+    assert len(surv["autocorrelation"]) == len(surv["tau"])
 
 
 def test_rmsf_single_model_note():

@@ -163,4 +163,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ selection, ref_axis }),
     }),
+  gyration: (id: string, selection: string) =>
+    req<any>(`/structures/${id}/analysis/gyration`, { method: "POST", body: JSON.stringify({ selection }) }),
+  dssp: (id: string, selection: string) =>
+    req<any>(`/structures/${id}/analysis/dssp`, { method: "POST", body: JSON.stringify({ selection }) }),
+  ramachandran: (id: string, selection: string) =>
+    req<any>(`/structures/${id}/analysis/ramachandran`, { method: "POST", body: JSON.stringify({ selection }) }),
+  contacts: (id: string, selection: string, cutoff: number) =>
+    req<any>(`/structures/${id}/analysis/contacts`, { method: "POST", body: JSON.stringify({ selection, cutoff }) }),
+  hbonds: (id: string, selection: string) =>
+    req<any>(`/structures/${id}/analysis/hbonds`, { method: "POST", body: JSON.stringify({ selection }) }),
 };
