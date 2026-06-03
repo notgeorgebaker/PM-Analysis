@@ -73,7 +73,18 @@ export interface TreeCategory {
   truncated: boolean;
 }
 
+export interface SystemNode {
+  key: string;
+  label: string;
+  rep: string;
+  present: boolean;
+  count: number; // residues
+  n_atoms: number;
+  selectors: Selectors;
+}
+
 export interface SelectionTree {
+  system: SystemNode;
   categories: TreeCategory[];
 }
 

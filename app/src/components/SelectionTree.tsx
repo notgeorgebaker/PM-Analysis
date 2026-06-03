@@ -11,13 +11,20 @@ const CAT_COLOR: Record<string, string> = {
   other: "#b07cff",
 };
 
+export interface PickedSelection {
+  mda: string;
+  ngl: string;
+  label: string;
+}
+
 interface Props {
   structure: StructureRef | null;
   onFocus: (nglSele: string) => void;
   onAddRep: (nglSele: string, repType: string) => void;
+  onPick: (sel: PickedSelection) => void;
 }
 
-export function SelectionTree({ structure, onFocus, onAddRep }: Props) {
+export function SelectionTree({ structure, onFocus, onAddRep, onPick }: Props) {
   const [tree, setTree] = useState<Tree | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,6 +64,32 @@ export function SelectionTree({ structure, onFocus, onAddRep }: Props) {
             />
             {loading && <div className="busy">Reading structure…</div>}
             {error && <div className="error">{error}</div>}
+
+            {tree && (
+              <div className="tree-system">
+                <span className="cat-dot" style={{ background: "#e6e8ec" }} />
+                <span className="cat-label">{tree.system.label}</span>
+                <span className="pill" title={`${tree.system.n_atoms.toLocaleString()} atoms`}>
+                  {tree.system.count.toLocaleString()} res · {tree.system.n_atoms.toLocaleString()} atoms
+                </span>
+                <span className="cat-actions">
+                  <button className="icon-btn" title="Fit whole system in view" onClick={() => onFocus(tree.system.selectors.ngl)}>
+                    ◎
+                  </button>
+                  <button className="icon-btn" title="Add whole system as a layer" onClick={() => onAddRep(tree.system.selectors.ngl, tree.system.rep)}>
+                    +
+                  </button>
+                  <button
+                    className="icon-btn"
+                    title="Use whole system in Analysis"
+                    onClick={() => onPick({ mda: tree.system.selectors.mda, ngl: tree.system.selectors.ngl, label: tree.system.label })}
+                  >
+                    ⤓
+                  </button>
+                </span>
+              </div>
+            )}
+
             {tree?.categories.map((cat) => (
               <CategoryRow
                 key={cat.key}
@@ -66,6 +99,7 @@ export function SelectionTree({ structure, onFocus, onAddRep }: Props) {
                 onToggle={() => setExpanded((e) => ({ ...e, [cat.key]: !e[cat.key] }))}
                 onFocus={onFocus}
                 onAddRep={onAddRep}
+                onPick={onPick}
                 matches={matches}
               />
             ))}
@@ -83,10 +117,11 @@ interface RowProps {
   onToggle: () => void;
   onFocus: (sele: string) => void;
   onAddRep: (sele: string, repType: string) => void;
+  onPick: (sel: PickedSelection) => void;
   matches: (r: TreeResidue) => boolean;
 }
 
-function CategoryRow({ cat, color, expanded, onToggle, onFocus, onAddRep, matches }: RowProps) {
+function CategoryRow({ cat, color, expanded, onToggle, onFocus, onAddRep, onPick, matches }: RowProps) {
   const shown = useMemo(() => cat.residues.filter(matches), [cat.residues, matches]);
   const canExpand = cat.present && cat.residues.length > 0;
 
@@ -118,6 +153,13 @@ function CategoryRow({ cat, color, expanded, onToggle, onFocus, onAddRep, matche
             <button className="icon-btn" title="Add as representation layer" onClick={() => onAddRep(cat.selectors.ngl, cat.rep)}>
               +
             </button>
+            <button
+              className="icon-btn"
+              title={`Use all ${cat.label.toLowerCase()} in Analysis`}
+              onClick={() => onPick({ mda: cat.selectors.mda, ngl: cat.selectors.ngl, label: cat.label })}
+            >
+              ⤓
+            </button>
           </span>
         )}
       </div>
@@ -140,6 +182,16 @@ function CategoryRow({ cat, color, expanded, onToggle, onFocus, onAddRep, matche
                 }}
               >
                 +
+              </button>
+              <button
+                className="icon-btn"
+                title="Use this residue in Analysis"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPick({ mda: r.selectors.mda, ngl: r.selectors.ngl, label: `${r.label} ${r.resid}` });
+                }}
+              >
+                ⤓
               </button>
             </div>
           ))}

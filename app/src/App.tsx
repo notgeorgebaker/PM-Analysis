@@ -4,7 +4,7 @@ import { RepSpec, Viewer, PickInfo } from "./ngl-viewer";
 import { Viewport } from "./components/Viewport";
 import { ImportPanel } from "./components/ImportPanel";
 import { RepresentationStack, newRep } from "./components/RepresentationStack";
-import { SelectionTree } from "./components/SelectionTree";
+import { SelectionTree, PickedSelection } from "./components/SelectionTree";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { AnalysisPanel } from "./components/AnalysisPanel";
 
@@ -21,6 +21,7 @@ export default function App() {
   const [summaries, setSummaries] = useState<Record<string, Summary>>({});
   const [repsById, setRepsById] = useState<Record<string, RepSpec[]>>({});
   const [pick, setPick] = useState<PickInfo | null>(null);
+  const [picked, setPicked] = useState<PickedSelection | null>(null);
   const [focusSele, setFocusSele] = useState<string | null>(null);
   const [healthy, setHealthy] = useState<boolean | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -110,7 +111,7 @@ export default function App() {
       />
 
       <div className="sidebar right">
-        <SelectionTree structure={active} onFocus={focus} onAddRep={addRepFromSelection} />
+        <SelectionTree structure={active} onFocus={focus} onAddRep={addRepFromSelection} onPick={setPicked} />
         <RepresentationStack reps={reps} disabled={!active} onChange={setReps} onFocus={focus} />
         <InspectorPanel
           structure={active}
@@ -118,7 +119,7 @@ export default function App() {
           pick={pick}
           onFocus={focus}
         />
-        <AnalysisPanel structure={active} structures={structures} />
+        <AnalysisPanel structure={active} structures={structures} picked={picked} />
       </div>
     </div>
   );

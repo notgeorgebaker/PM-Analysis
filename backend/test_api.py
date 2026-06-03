@@ -63,12 +63,21 @@ def test_distance_matrix():
 def test_selection_tree():
     sid = _load_demo()
     tree = client.get(f"/structures/{sid}/selection-tree").json()
+    # master "System" node sits above the categories
+    assert tree["system"]["label"] == "System"
+    assert tree["system"]["count"] == 18 and tree["system"]["n_atoms"] == 96
     cats = {c["key"]: c for c in tree["categories"]}
     # protein present with human-readable residues
     assert cats["protein"]["present"] and cats["protein"]["count"] == 12
     assert cats["protein"]["residues"][0]["label"] == "Alanine"
-    # absent categories report cleanly (the test case has no lipids/water/ions)
-    for absent in ("lipids", "water", "ions", "nucleic"):
+    # the demo now bundles TIP3 water + POPE/POPG/cardiolipin lipids
+    assert cats["water"]["present"] and cats["water"]["count"] == 3
+    assert cats["water"]["residues"][0]["label"] == "Water"
+    assert cats["lipids"]["present"] and cats["lipids"]["count"] == 3
+    lipid_names = {r["label"] for r in cats["lipids"]["residues"]}
+    assert "Cardiolipin" in lipid_names and "POPE" in lipid_names
+    # categories genuinely absent still report cleanly
+    for absent in ("ions", "nucleic"):
         assert cats[absent]["present"] is False and cats[absent]["count"] == 0
     # nodes carry both viewer and analysis selectors
     assert "ngl" in cats["protein"]["selectors"] and "mda" in cats["protein"]["selectors"]

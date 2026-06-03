@@ -17,17 +17,23 @@ kind of work you'd otherwise do in VMD.
 
 - **Import structures** — open a local `.pdb`/`.mmCIF`, fetch from the **RCSB
   PDB** by 4-character ID, or pull a predicted model from **AlphaFold DB** by
-  UniProt accession. A bundled demo structure works fully offline.
+  UniProt accession. A bundled demo structure — a poly-Ala helix plus TIP3
+  waters and POPE/POPG/cardiolipin lipids — works fully offline and exercises
+  every molecule-type category.
 - **Clean representations** — cartoon, surface, ball-and-stick, licorice,
   spacefill, ribbon, rope and more, each its own non-destructive layer with its
   own selection, colour scheme and opacity. Stack and tweak them live.
-- **Selection tree (no syntax required)** — the structure is auto-classified
-  into plain-language molecule types: **Protein, Nucleic acids, Lipids, Waters,
-  Ions, Other/ligands**. Absent types say so ("No lipids found") instead of
-  failing. Drill into a type to see individual residues by full name
-  ("Alanine 41"), then click to focus the camera or promote it to its own
-  representation layer. A filter box narrows large proteins instantly.
-  Power users still get a raw MDAnalysis/VMD selection box in the inspector.
+- **Selection tree (no syntax required)** — a master **System** node sits atop
+  the structure, which is auto-classified into plain-language molecule types:
+  **Protein, Nucleic acids, Lipids, Waters, Ions, Other/ligands**. Absent types
+  say so ("No lipids found") instead of failing. Drill into a type to see
+  individual residues by full name ("Alanine 41"), then click to focus the
+  camera, **+** to promote it to its own representation layer, or **⤓** to send
+  it straight into the Analysis panel. A filter box narrows large proteins
+  instantly. Power users still get a raw MDAnalysis/VMD box in the inspector.
+- **Selection ↔ analysis linking** — every node in the tree (System, a molecule
+  type, or a single residue) can be pushed into the analysis tools with one
+  click: "Set A"/"Set B" for distances, "Use as selection" elsewhere.
 - **Residue inspector** — click an atom to see its residue's name, chain,
   atom count and centre of geometry.
 - **Analysis suite**
@@ -111,8 +117,6 @@ your existing notebook selections almost verbatim.
 - In-viewport **measurement tools** (click-to-measure distances/angles) and
   colour-by-analysis (paint SASA or RMSF straight onto the structure).
 - Plots for analysis output (currently tabular), and CSV export.
-- Wire the selection-tree nodes directly into the analysis panel inputs (so you
-  can pick two residues from the tree and measure between them in one click).
 - Packaged installers via `electron-builder` with a bundled Python runtime.
 
 ## Repository layout

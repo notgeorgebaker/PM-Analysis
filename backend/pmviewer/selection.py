@@ -54,6 +54,10 @@ LIPID_RESNAMES = {
     "DLPC": "DLPC", "DSPC": "DSPC", "DSPE": "DSPE", "SOPC": "SOPC", "PSM": "Sphingomyelin",
     "SSM": "Sphingomyelin", "DPSM": "Sphingomyelin", "CHL1": "Cholesterol",
     "CHOL": "Cholesterol", "CLR": "Cholesterol", "ERG": "Ergosterol",
+    # cardiolipins (CHARMM-GUI / common naming)
+    "CDL": "Cardiolipin", "CDL1": "Cardiolipin", "CDL2": "Cardiolipin",
+    "TOCL": "Cardiolipin", "TOCL2": "Cardiolipin", "TYCL": "Cardiolipin",
+    "TLCL": "Cardiolipin", "TLCL2": "Cardiolipin", "PVCL2": "Cardiolipin",
     # Amber Lipid split-residue naming
     "PC": "Phosphatidylcholine", "PE": "Phosphatidylethanolamine", "PA": "Phosphatidate",
     "PS": "Phosphatidylserine", "PGR": "Phosphatidylglycerol", "OL": "Oleoyl tail",
@@ -125,7 +129,18 @@ def selection_tree(universe, per_category_cap: int = 2000) -> dict[str, Any]:
         )
     )
 
-    return {"categories": categories}
+    # Master "System" node sits above the categories — the whole structure.
+    system = {
+        "key": "system",
+        "label": "System",
+        "rep": "cartoon",
+        "present": int(universe.atoms.n_atoms) > 0,
+        "count": int(universe.residues.n_residues),
+        "n_atoms": int(universe.atoms.n_atoms),
+        "selectors": {"ngl": "all", "mda": "all"},
+    }
+
+    return {"system": system, "categories": categories}
 
 
 def _build_category(spec: dict[str, str], residues, cap: int) -> dict[str, Any]:

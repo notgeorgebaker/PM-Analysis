@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, StructureRef } from "../api";
+import { PickedSelection } from "./SelectionTree";
 
 type Tab = "sasa" | "distance" | "rmsd" | "rmsf" | "hole";
 const TABS: { id: Tab; label: string }[] = [
@@ -13,9 +14,10 @@ const TABS: { id: Tab; label: string }[] = [
 interface Props {
   structure: StructureRef | null;
   structures: StructureRef[];
+  picked: PickedSelection | null;
 }
 
-export function AnalysisPanel({ structure, structures }: Props) {
+export function AnalysisPanel({ structure, structures, picked }: Props) {
   const [tab, setTab] = useState<Tab>("sasa");
   return (
     <div className="section">
@@ -29,15 +31,33 @@ export function AnalysisPanel({ structure, structures }: Props) {
       </div>
       <div className="section-body">
         {!structure && <div className="muted">Select a structure to analyse.</div>}
-        {structure && tab === "sasa" && <Sasa structure={structure} />}
-        {structure && tab === "distance" && <Distance structure={structure} />}
-        {structure && tab === "rmsd" && <Rmsd structure={structure} structures={structures} />}
-        {structure && tab === "rmsf" && <Rmsf structure={structure} />}
-        {structure && tab === "hole" && <Hole structure={structure} />}
+        {structure && tab === "sasa" && <Sasa structure={structure} picked={picked} />}
+        {structure && tab === "distance" && <Distance structure={structure} picked={picked} />}
+        {structure && tab === "rmsd" && <Rmsd structure={structure} structures={structures} picked={picked} />}
+        {structure && tab === "rmsf" && <Rmsf structure={structure} picked={picked} />}
+        {structure && tab === "hole" && <Hole structure={structure} picked={picked} />}
         <p className="muted" style={{ marginTop: 10 }}>
-          Analysis selections use MDAnalysis / VMD syntax (e.g. <code>segid A and resid 11:41</code>).
+          Tip: hit <strong>⤓</strong> on anything in the Selection tree to send it here. Fields
+          accept MDAnalysis / VMD syntax (e.g. <code>segid A and resid 11:41</code>).
         </p>
       </div>
+    </div>
+  );
+}
+
+/** Small control row: "From selection: <label>" + button(s) to fill a field. */
+function FromSelection({ picked, actions }: { picked: PickedSelection | null; actions: { label: string; onClick: () => void }[] }) {
+  if (!picked) return null;
+  return (
+    <div className="from-sel">
+      <span className="from-sel-label" title={picked.mda}>
+        ⤓ {picked.label}
+      </span>
+      {actions.map((a) => (
+        <button key={a.label} className="ghost" onClick={a.onClick}>
+          {a.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -59,12 +79,13 @@ function useRunner() {
   return { busy, error, run };
 }
 
-function Sasa({ structure }: { structure: StructureRef }) {
+function Sasa({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {
   const [sele, setSele] = useState("");
   const [res, setRes] = useState<any>(null);
   const { busy, error, run } = useRunner();
   return (
     <>
+      <FromSelection picked={picked} actions={[{ label: "Use as selection", onClick: () => setSele(picked!.mda) }]} />
       <label className="field"><span>Selection (blank = whole structure)</span>
         <input value={sele} placeholder="protein" onChange={(e) => setSele(e.target.value)} />
       </label>
@@ -96,7 +117,7 @@ function Sasa({ structure }: { structure: StructureRef }) {
   );
 }
 
-function Distance({ structure }: { structure: StructureRef }) {
+function Distance({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {
   const [a, setA] = useState("segid A and resid 1");
   const [b, setB] = useState("segid A and resid 10");
   const [mode, setMode] = useState("ca");
@@ -104,6 +125,13 @@ function Distance({ structure }: { structure: StructureRef }) {
   const { busy, error, run } = useRunner();
   return (
     <>
+      <FromSelection
+        picked={picked}
+        actions={[
+          { label: "Set A", onClick: () => setA(picked!.mda) },
+          { label: "Set B", onClick: () => setB(picked!.mda) },
+        ]}
+      />
       <label className="field"><span>Selection A</span><input value={a} onChange={(e) => setA(e.target.value)} /></label>
       <label className="field"><span>Selection B</span><input value={b} onChange={(e) => setB(e.target.value)} /></label>
       <label className="field"><span>Reference point</span>
@@ -127,7 +155,7 @@ function Distance({ structure }: { structure: StructureRef }) {
   );
 }
 
-function Rmsd({ structure, structures }: { structure: StructureRef; structures: StructureRef[] }) {
+function Rmsd({ structure, structures, picked }: { structure: StructureRef; structures: StructureRef[]; picked: PickedSelection | null }) {
   const others = structures;
   const [mobile, setMobile] = useState(structure.id);
   const [sele, setSele] = useState("name CA");
@@ -135,6 +163,7 @@ function Rmsd({ structure, structures }: { structure: StructureRef; structures: 
   const { busy, error, run } = useRunner();
   return (
     <>
+      <FromSelection picked={picked} actions={[{ label: "Use as selection", onClick: () => setSele(picked!.mda) }]} />
       <label className="field"><span>Reference</span><input value={structure.name} disabled /></label>
       <label className="field"><span>Mobile structure</span>
         <select value={mobile} onChange={(e) => setMobile(e.target.value)}>
@@ -159,12 +188,13 @@ function Rmsd({ structure, structures }: { structure: StructureRef; structures: 
   );
 }
 
-function Rmsf({ structure }: { structure: StructureRef }) {
+function Rmsf({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {
   const [sele, setSele] = useState("name CA");
   const [res, setRes] = useState<any>(null);
   const { busy, error, run } = useRunner();
   return (
     <>
+      <FromSelection picked={picked} actions={[{ label: "Use as selection", onClick: () => setSele(picked!.mda) }]} />
       <label className="field"><span>Selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
       <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.rmsf(structure.id, sele)))}>
         {busy ? "Computing…" : "Compute RMSF"}
@@ -187,12 +217,13 @@ function Rmsf({ structure }: { structure: StructureRef }) {
   );
 }
 
-function Hole({ structure }: { structure: StructureRef }) {
+function Hole({ structure, picked }: { structure: StructureRef; picked: PickedSelection | null }) {
   const [sele, setSele] = useState("protein");
   const [res, setRes] = useState<any>(null);
   const { busy, error, run } = useRunner();
   return (
     <>
+      <FromSelection picked={picked} actions={[{ label: "Use as selection", onClick: () => setSele(picked!.mda) }]} />
       <label className="field"><span>Channel selection</span><input value={sele} onChange={(e) => setSele(e.target.value)} /></label>
       <button className="primary" disabled={busy} onClick={() => run(async () => setRes(await api.hole(structure.id, sele)))}>
         {busy ? "Profiling pore…" : "Run HOLE2"}
